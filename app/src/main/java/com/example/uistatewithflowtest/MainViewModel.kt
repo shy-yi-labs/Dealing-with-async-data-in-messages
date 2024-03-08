@@ -2,6 +2,10 @@ package com.example.uistatewithflowtest
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.uistatewithflowtest.repository.BatchEmitRepository
+import com.example.uistatewithflowtest.repository.IndividualEmitRepository
+import com.example.uistatewithflowtest.repository.RawItem
+import com.example.uistatewithflowtest.repository.RawItemRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted

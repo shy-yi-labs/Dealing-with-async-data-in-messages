@@ -1,8 +1,6 @@
-package com.example.uistatewithflowtest
+package com.example.uistatewithflowtest.repository
 
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 
 class BatchEmitRepository(
     private val delayBy: Long = 1000

@@ -1,4 +1,4 @@
-package com.example.uistatewithflowtest
+package com.example.uistatewithflowtest.repository
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
