@@ -74,9 +74,10 @@ class MainViewModel : ViewModel() {
         IndividualEmitRepository(1000)
     )
 
-    private val rawItemsFlow = SortedValuesFlow<Int, RawItem>()
+    private val rawItemsFlow = OrderedMapFlow<Int, RawItem>()
 
     val uiState: StateFlow<MainUiState> = rawItemsFlow
+        .map { it.values }
         .map { rawItems ->
             with(itemFactory) {
                 MainUiState(items = rawItems.toItems())
