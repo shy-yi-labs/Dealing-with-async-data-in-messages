@@ -3,10 +3,11 @@ package com.example.uistatewithflowtest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uistatewithflowtest.repository.ReactionRepository
-import com.example.uistatewithflowtest.repository.IndividualEmitRepository
+import com.example.uistatewithflowtest.repository.ScrapRepository
 import com.example.uistatewithflowtest.repository.RawItem
 import com.example.uistatewithflowtest.repository.RawItemRepository
 import com.example.uistatewithflowtest.repository.Reaction
+import com.example.uistatewithflowtest.repository.Scrap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,13 +26,13 @@ data class Item(
     val id: Int,
     val staticValue: String,
     val reaction: Flow<Reaction?>,
-    val individualEmitValue: Flow<Int?>
+    val scrap: Flow<Scrap?>
 )
 
 class ItemFactory(
     private val coroutineScope: CoroutineScope,
     private val reactionRepository: ReactionRepository,
-    private val individualEmitRepository: IndividualEmitRepository
+    private val scrapRepository: ScrapRepository
 ) {
     private val itemCacheStore = mutableMapOf<Int, Pair<RawItem, Item>>()
 
@@ -59,8 +60,8 @@ class ItemFactory(
             reaction = batchEmitFlow
                 .map { it[this.id] }
                 .shareIn(coroutineScope, SharingStarted.Eagerly, 1),
-            individualEmitValue = flow {
-                emit(individualEmitRepository.get(id))
+            scrap = flow {
+                emit(scrapRepository.get(id))
             }.shareIn(coroutineScope, SharingStarted.Eagerly, 1)
         )
     }
@@ -72,7 +73,7 @@ class MainViewModel : ViewModel() {
     private val itemFactory = ItemFactory(
         viewModelScope,
         reactionRepository = ReactionRepository(1500),
-        individualEmitRepository = IndividualEmitRepository(1000)
+        scrapRepository = ScrapRepository(1000)
     )
 
     private val rawItemsFlow = OrderedMapFlow<Int, RawItem>()

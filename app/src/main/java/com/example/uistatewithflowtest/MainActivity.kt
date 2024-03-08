@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
                                     .height(64.dp)
                             ) {
                                 val reaction by item.reaction.collectAsState(initial = null)
-                                val individualEmitValue by item.individualEmitValue.collectAsState(
+                                val individualEmitValue by item.scrap.collectAsState(
                                     initial = null
                                 )
                                 RowText(text = item.staticValue)
