@@ -2,10 +2,11 @@ package com.example.uistatewithflowtest
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uistatewithflowtest.repository.BatchEmitRepository
+import com.example.uistatewithflowtest.repository.ReactionRepository
 import com.example.uistatewithflowtest.repository.IndividualEmitRepository
 import com.example.uistatewithflowtest.repository.RawItem
 import com.example.uistatewithflowtest.repository.RawItemRepository
+import com.example.uistatewithflowtest.repository.Reaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,13 +24,13 @@ data class MainUiState(
 data class Item(
     val id: Int,
     val staticValue: String,
-    val batchEmitValue: Flow<Int?>,
+    val reaction: Flow<Reaction?>,
     val individualEmitValue: Flow<Int?>
 )
 
 class ItemFactory(
     private val coroutineScope: CoroutineScope,
-    private val batchEmitRepository: BatchEmitRepository,
+    private val reactionRepository: ReactionRepository,
     private val individualEmitRepository: IndividualEmitRepository
 ) {
     private val itemCacheStore = mutableMapOf<Int, Pair<RawItem, Item>>()
@@ -42,7 +43,7 @@ class ItemFactory(
         }
 
         val batchEmitFlow =
-            flow { emit(batchEmitRepository.get(rawItemsNotInCache.map { it.id })) }
+            flow { emit(reactionRepository.get(rawItemsNotInCache.map { it.id })) }
 
         rawItemsNotInCache.forEach {
             itemCacheStore[it.id] = it to it.toItem(batchEmitFlow)
@@ -51,11 +52,11 @@ class ItemFactory(
         return this.map { itemCacheStore[it.id]!!.second }
     }
 
-    private fun RawItem.toItem(batchEmitFlow: Flow<Map<Int, Int?>>): Item {
+    private fun RawItem.toItem(batchEmitFlow: Flow<Map<Int, Reaction?>>): Item {
         return Item(
             id = id,
             staticValue = value,
-            batchEmitValue = batchEmitFlow
+            reaction = batchEmitFlow
                 .map { it[this.id] }
                 .shareIn(coroutineScope, SharingStarted.Eagerly, 1),
             individualEmitValue = flow {
@@ -70,8 +71,8 @@ class MainViewModel : ViewModel() {
     private val rawItemRepository = RawItemRepository(30, 3000)
     private val itemFactory = ItemFactory(
         viewModelScope,
-        BatchEmitRepository(2000),
-        IndividualEmitRepository(1000)
+        reactionRepository = ReactionRepository(1500),
+        individualEmitRepository = IndividualEmitRepository(1000)
     )
 
     private val rawItemsFlow = OrderedMapFlow<Int, RawItem>()

@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                                     .height(64.dp)
                             ) {
                                 RowText(text = "Static")
-                                RowText(text = "Batch")
+                                RowText(text = "Reaction")
                                 RowText(text = "Individual")
                             }
                         }
@@ -61,12 +61,12 @@ class MainActivity : ComponentActivity() {
                                     .fillParentMaxWidth()
                                     .height(64.dp)
                             ) {
-                                val batchEmitValue by item.batchEmitValue.collectAsState(initial = null)
+                                val reaction by item.reaction.collectAsState(initial = null)
                                 val individualEmitValue by item.individualEmitValue.collectAsState(
                                     initial = null
                                 )
                                 RowText(text = item.staticValue)
-                                RowText(text = batchEmitValue.toString())
+                                RowText(text = reaction.toString())
                                 RowText(text = individualEmitValue.toString())
                             }
                         }
