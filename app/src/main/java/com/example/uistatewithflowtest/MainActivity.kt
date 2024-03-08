@@ -52,8 +52,8 @@ class MainActivity : ComponentActivity() {
                         }
 
                         items(
-                            uiState.items.reversed(),
-                            key = { it.id}
+                            uiState.messages.reversed(),
+                            key = { it.content}
                         ) { item ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,

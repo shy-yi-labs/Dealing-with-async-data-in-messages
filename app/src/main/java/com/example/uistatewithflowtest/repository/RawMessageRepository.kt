@@ -5,39 +5,39 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-data class RawItem(
+data class RawMessage(
     val id: Int,
     val value: String
 )
 
-private fun Int.toRawItem(): RawItem {
-    return RawItem(
+private fun Int.toRawMessage(): RawMessage {
+    return RawMessage(
         this,
         "$this!"
     )
 }
 
-class RawItemRepository(
+class RawMessageRepository(
     private val pushCount: Int = 10,
     private val pushInterval: Long = 3000
 ) {
     private val mutex = Mutex()
-    private val items = MutableList(100) { it.toRawItem() }
+    private val rawMessages = MutableList(100) { it.toRawMessage() }
 
     suspend fun fetchLatest(
         count: Int
-    ): List<RawItem> {
+    ): List<RawMessage> {
         return mutex.withLock {
-            items.takeLast(count)
+            rawMessages.takeLast(count)
         }
     }
 
     suspend fun fetchRange(
         start: Int,
         end: Int
-    ): List<RawItem> {
+    ): List<RawMessage> {
         return mutex.withLock {
-            items.slice(start .. end)
+            rawMessages.slice(start .. end)
         }
     }
 
@@ -45,8 +45,8 @@ class RawItemRepository(
         for(i in 100 .. (100 + pushCount)) {
             delay(pushInterval)
             mutex.withLock {
-                val rawItem = i.toRawItem()
-                items.add(rawItem)
+                val rawItem = i.toRawMessage()
+                rawMessages.add(rawItem)
                 emit(rawItem)
             }
         }
