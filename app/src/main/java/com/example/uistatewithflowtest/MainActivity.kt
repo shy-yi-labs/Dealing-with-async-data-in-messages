@@ -31,7 +31,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             UiStateWithFlowTestTheme {
                 // A surface container using the 'background' color from the theme
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     val uiState by viewModel.uiState.collectAsState()
 
                     LazyColumn(reverseLayout = true) {
@@ -48,7 +51,10 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        items(uiState.items.reversed()) { item ->
+                        items(
+                            uiState.items.reversed(),
+                            key = { it.id}
+                        ) { item ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
@@ -56,7 +62,9 @@ class MainActivity : ComponentActivity() {
                                     .height(64.dp)
                             ) {
                                 val batchEmitValue by item.batchEmitValue.collectAsState(initial = null)
-                                val individualEmitValue by item.individualEmitValue.collectAsState(initial = null)
+                                val individualEmitValue by item.individualEmitValue.collectAsState(
+                                    initial = null
+                                )
                                 RowText(text = item.staticValue)
                                 RowText(text = batchEmitValue.toString())
                                 RowText(text = individualEmitValue.toString())
@@ -74,5 +82,11 @@ fun RowScope.RowText(
     text: String,
     modifier: Modifier = Modifier
 ) {
-    Text(text = text, textAlign = TextAlign.Center, modifier = modifier.weight(1f))
+    Text(
+        text = text,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .weight(1f)
+            .recomposeHighlighter()
+    )
 }
