@@ -4,8 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,7 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.uistatewithflowtest.ui.theme.UiStateWithFlowTestTheme
 
@@ -34,24 +34,22 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val uiState by viewModel.uiState.collectAsState()
 
-                    LazyColumn {
+                    LazyColumn(reverseLayout = true) {
                         item {
                             Row(
-                                horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillParentMaxWidth()
                                     .height(64.dp)
                             ) {
-                                Text(text = "Static")
-                                Text(text = "Batch")
-                                Text(text = "Individual")
+                                RowText(text = "Static")
+                                RowText(text = "Batch")
+                                RowText(text = "Individual")
                             }
                         }
 
-                        items(uiState.items) { item ->
+                        items(uiState.items.reversed()) { item ->
                             Row(
-                                horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillParentMaxWidth()
@@ -59,9 +57,9 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 val batchEmitValue by item.batchEmitValue.collectAsState(initial = null)
                                 val individualEmitValue by item.individualEmitValue.collectAsState(initial = null)
-                                Text(text = item.staticValue.toString())
-                                Text(text = batchEmitValue.toString())
-                                Text(text = individualEmitValue.toString())
+                                RowText(text = item.staticValue)
+                                RowText(text = batchEmitValue.toString())
+                                RowText(text = individualEmitValue.toString())
                             }
                         }
                     }
@@ -69,4 +67,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+@Composable
+fun RowScope.RowText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Text(text = text, textAlign = TextAlign.Center, modifier = modifier.weight(1f))
 }

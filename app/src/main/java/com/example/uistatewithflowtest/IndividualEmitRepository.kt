@@ -8,7 +8,7 @@ class IndividualEmitRepository(
 
     suspend fun get(id: Int): Int? {
         delay(delayBy)
-        return if (id % 3 == 0) id.repeat(3)  else null
+        return if (id % 3 == 0) id.repeat(2)  else null
     }
 
     private fun Int.repeat(n: Int): Int {

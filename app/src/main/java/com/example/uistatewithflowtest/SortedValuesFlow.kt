@@ -2,6 +2,7 @@ package com.example.uistatewithflowtest
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -11,7 +12,7 @@ class SortedValuesFlow<K, V>: Flow<Collection<V>> {
 
     private val mutex = Mutex()
     private val treeMap = TreeMap<K, V>()
-    private val stateFlow = MutableStateFlow<Collection<V>>(emptyList())
+    private val stateFlow = MutableSharedFlow<Collection<V>>(replay = 1)
 
     suspend fun put(key: K, value: V) {
         mutex.withLock {
