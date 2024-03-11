@@ -1,5 +1,7 @@
 package com.example.uistatewithflowtest.repository
 
+import com.example.uistatewithflowtest.Reaction
+import com.example.uistatewithflowtest.ReactionEvent
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -9,42 +11,29 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
 
-data class Reaction(val value: Int) {
-
-    companion object {
-        fun random(): Reaction {
-            return Reaction((0..9).random())
-        }
-    }
-
-    override fun toString(): String {
-        return "Reaction($value)"
-    }
-}
-
-sealed class ReactionEvent {
-
-    data class Insert(val targetId: Int, val reaction: Reaction): ReactionEvent()
-
-    data class Update(val targetId: Int, val reaction: Reaction): ReactionEvent()
-
-    data class Delete(val targetId: Int): ReactionEvent()
-}
-
-@OptIn(DelicateCoroutinesApi::class)
-class ReactionRepository(
+class ReactionPullDataSource(
     private val getDelay: Long = 1000,
-    private val pushInterval: Long = 2000,
-    private val pushTargetIdsRange: IntRange = 0 .. 100,
 ) {
-
-    private val pushEventChannel = Channel<ReactionEvent>()
-    val pushEvents: Flow<ReactionEvent> = pushEventChannel.consumeAsFlow()
 
     suspend fun get(ids: List<Int>): Map<Int, Reaction?> {
         delay(getDelay)
         return ids.associateWith { if ((0 until 2).random() == 0) Reaction.random() else null }
     }
+}
+
+interface ReactionPushDataSource {
+
+    val pushEvents: Flow<ReactionEvent>
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+class RandomReactionPushDataSource(
+    private val pushInterval: Long = 2000,
+    private val pushTargetIdsRange: IntRange = 0 .. 100,
+): ReactionPushDataSource {
+
+    private val pushEventChannel = Channel<ReactionEvent>()
+    override val pushEvents: Flow<ReactionEvent> = pushEventChannel.consumeAsFlow()
 
     init {
         GlobalScope.launch(Dispatchers.IO) {
@@ -60,5 +49,15 @@ class ReactionRepository(
                 launch { pushEventChannel.send(event) }
             }
         }
+    }
+}
+
+class ManualReactionPushDataSource: ReactionPushDataSource {
+
+    private val pushEventChannel = Channel<ReactionEvent>()
+    override val pushEvents: Flow<ReactionEvent> = pushEventChannel.consumeAsFlow()
+
+    suspend fun send(push: ReactionEvent) {
+        pushEventChannel.send(push)
     }
 }

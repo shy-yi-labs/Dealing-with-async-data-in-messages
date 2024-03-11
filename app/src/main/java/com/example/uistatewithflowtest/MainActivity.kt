@@ -1,9 +1,11 @@
 package com.example.uistatewithflowtest
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,8 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.uistatewithflowtest.ui.theme.UiStateWithFlowTestTheme
@@ -53,7 +57,7 @@ class MainActivity : ComponentActivity() {
 
                         items(
                             uiState.messages.reversed(),
-                            key = { it.content}
+                            key = { it.id}
                         ) { item ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -65,8 +69,21 @@ class MainActivity : ComponentActivity() {
                                 val individualEmitValue by item.scrap.collectAsState(
                                     initial = null
                                 )
+
+                                val context = LocalContext.current
+
                                 RowText(text = item.staticValue)
-                                RowText(text = reaction.toString())
+                                RowText(
+                                    text = reaction.toString(),
+                                    modifier = remember(context, viewModel) {
+                                        Modifier
+                                            .clickable {
+                                                val event = ReactionEvent.random(item.id)
+                                                Toast.makeText(context, "${event::class.simpleName}", Toast.LENGTH_SHORT).show()
+                                                viewModel.triggerNewReactionEvent(event)
+                                            }
+                                    }
+                                )
                                 RowText(text = individualEmitValue.toString())
                             }
                         }

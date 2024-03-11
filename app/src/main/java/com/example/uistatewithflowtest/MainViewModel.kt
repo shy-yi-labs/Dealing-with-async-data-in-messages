@@ -2,12 +2,12 @@ package com.example.uistatewithflowtest
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uistatewithflowtest.repository.ReactionRepository
-import com.example.uistatewithflowtest.repository.ScrapRepository
+import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
 import com.example.uistatewithflowtest.repository.RawMessage
 import com.example.uistatewithflowtest.repository.RawMessageRepository
-import com.example.uistatewithflowtest.repository.Reaction
+import com.example.uistatewithflowtest.repository.ReactionPullDataSource
 import com.example.uistatewithflowtest.repository.Scrap
+import com.example.uistatewithflowtest.repository.ScrapRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +23,7 @@ data class MainUiState(
 )
 
 data class Message(
+    val id: Int,
     val content: Int,
     val staticValue: String,
     val reaction: Flow<Reaction?>,
@@ -31,7 +32,7 @@ data class Message(
 
 class MessageFactory(
     private val coroutineScope: CoroutineScope,
-    private val reactionManager: ReactionManager,
+    private val reactionRepository: ReactionRepository,
     private val scrapRepository: ScrapRepository
 ) {
     private val messageCacheStore = mutableMapOf<Int, Pair<RawMessage, Message>>()
@@ -43,7 +44,7 @@ class MessageFactory(
             return@filter (cache != null && rawItem == cache.first).not()
         }
 
-        reactionManager.fetch(rawMessagesNotInCache.map { it.id })
+        reactionRepository.fetch(rawMessagesNotInCache.map { it.id })
 
         rawMessagesNotInCache.forEach {
             messageCacheStore[it.id] = it to it.toItem()
@@ -54,9 +55,10 @@ class MessageFactory(
 
     private fun RawMessage.toItem(): Message {
         return Message(
+            id = id,
             content = id,
             staticValue = value,
-            reaction = reactionManager.get(id),
+            reaction = reactionRepository.get(id),
             scrap = flow {
                 emit(scrapRepository.get(id))
             }.shareIn(coroutineScope, SharingStarted.Eagerly, 1)
@@ -67,11 +69,16 @@ class MessageFactory(
 class MainViewModel : ViewModel() {
 
     private val rawMessageRepository = RawMessageRepository(30, 3000)
-    private val reactionManager = ReactionManager(ReactionRepository(1500, pushTargetIdsRange = 100..110))
+
+    private val manualReactionPushDataSource = ManualReactionPushDataSource()
+    private val reactionRepository = ReactionRepository(
+        reactionPullDataSource = ReactionPullDataSource(1500),
+        reactionPushDataSource = manualReactionPushDataSource
+    )
 
     private val messageFactory = MessageFactory(
         viewModelScope,
-        reactionManager = reactionManager,
+        reactionRepository = reactionRepository,
         scrapRepository = ScrapRepository(1000)
     )
 
@@ -96,8 +103,14 @@ class MainViewModel : ViewModel() {
             }
 
             launch {
-                reactionManager.collectPushes()
+                reactionRepository.collectPushes()
             }
+        }
+    }
+
+    fun triggerNewReactionEvent(reactionEvent: ReactionEvent) {
+        viewModelScope.launch {
+            manualReactionPushDataSource.send(reactionEvent)
         }
     }
 }
