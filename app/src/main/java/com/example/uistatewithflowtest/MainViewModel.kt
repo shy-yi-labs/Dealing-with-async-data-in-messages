@@ -31,35 +31,32 @@ data class Message(
 
 class MessageFactory(
     private val coroutineScope: CoroutineScope,
-    private val reactionRepository: ReactionRepository,
+    private val reactionManager: ReactionManager,
     private val scrapRepository: ScrapRepository
 ) {
     private val messageCacheStore = mutableMapOf<Int, Pair<RawMessage, Message>>()
 
-    fun Collection<RawMessage>.toItems(): List<Message> {
+    suspend fun Collection<RawMessage>.toItems(): List<Message> {
         val rawMessagesNotInCache = this.filter { rawItem ->
             val cache = messageCacheStore[rawItem.id]
             // Is in cache and rawItem is equal to old rawItem
             return@filter (cache != null && rawItem == cache.first).not()
         }
 
-        val reactions =
-            flow { emit(reactionRepository.get(rawMessagesNotInCache.map { it.id })) }
+        reactionManager.fetch(rawMessagesNotInCache.map { it.id })
 
         rawMessagesNotInCache.forEach {
-            messageCacheStore[it.id] = it to it.toItem(reactions)
+            messageCacheStore[it.id] = it to it.toItem()
         }
 
         return this.map { messageCacheStore[it.id]!!.second }
     }
 
-    private fun RawMessage.toItem(reactions: Flow<Map<Int, Reaction?>>): Message {
+    private fun RawMessage.toItem(): Message {
         return Message(
             content = id,
             staticValue = value,
-            reaction = reactions
-                .map { it[this.id] }
-                .shareIn(coroutineScope, SharingStarted.Eagerly, 1),
+            reaction = reactionManager.get(id),
             scrap = flow {
                 emit(scrapRepository.get(id))
             }.shareIn(coroutineScope, SharingStarted.Eagerly, 1)
@@ -70,9 +67,11 @@ class MessageFactory(
 class MainViewModel : ViewModel() {
 
     private val rawMessageRepository = RawMessageRepository(30, 3000)
+    private val reactionManager = ReactionManager(ReactionRepository(1500, pushTargetIdsRange = 100..110))
+
     private val messageFactory = MessageFactory(
         viewModelScope,
-        reactionRepository = ReactionRepository(1500),
+        reactionManager = reactionManager,
         scrapRepository = ScrapRepository(1000)
     )
 
@@ -90,8 +89,14 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             rawItemsFlow.putAll(rawMessageRepository.fetchLatest(5).map { Pair(it.id, it) })
 
-            rawMessageRepository.pushes.collect {
-                rawItemsFlow.put(it.id, it)
+            launch {
+                rawMessageRepository.pushes.collect {
+                    rawItemsFlow.put(it.id, it)
+                }
+            }
+
+            launch {
+                reactionManager.collectPushes()
             }
         }
     }

@@ -4,12 +4,15 @@ import com.example.uistatewithflowtest.repository.Reaction
 import com.example.uistatewithflowtest.repository.ReactionEvent
 import com.example.uistatewithflowtest.repository.ReactionRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 
 class ReactionManager(
     private val reactionRepository: ReactionRepository
 ) {
     private val mapFlow = OrderedMapFlow<Int, Reaction>()
-    val reactions: Flow<Map<Int, Reaction>> = mapFlow
+    private val reactions: Flow<Map<Int, Reaction>> = mapFlow
 
     suspend fun collectPushes() {
         reactionRepository.pushEvents.collect { event ->
@@ -25,6 +28,10 @@ class ReactionManager(
                 }
             }
         }
+    }
+
+    fun get(id: Int): Flow<Reaction?> {
+        return reactions.map { it[id] }
     }
 
     suspend fun fetch(ids: List<Int>) {

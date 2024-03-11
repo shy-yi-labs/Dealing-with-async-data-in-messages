@@ -8,7 +8,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 data class Reaction(val value: Int) {
 
@@ -57,7 +56,8 @@ class ReactionRepository(
                     1 -> ReactionEvent.Update(targetId, Reaction.random())
                     else -> ReactionEvent.Delete(targetId)
                 }
-                pushEventChannel.send(event)
+
+                launch { pushEventChannel.send(event) }
             }
         }
     }
