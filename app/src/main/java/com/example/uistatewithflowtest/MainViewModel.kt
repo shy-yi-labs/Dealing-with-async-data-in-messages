@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
 import com.example.uistatewithflowtest.repository.RawMessage
 import com.example.uistatewithflowtest.repository.RawMessageRepository
-import com.example.uistatewithflowtest.repository.ReactionPullDataSource
 import com.example.uistatewithflowtest.repository.Scrap
 import com.example.uistatewithflowtest.repository.ScrapRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import kotlin.coroutines.coroutineContext
 
 data class MainUiState(
     val messages: List<Message> = emptyList()
@@ -30,8 +32,7 @@ data class Message(
     val scrap: Flow<Scrap?>
 )
 
-class MessageFactory(
-    private val coroutineScope: CoroutineScope,
+class MessageFactory @Inject constructor(
     private val reactionRepository: ReactionRepository,
     private val scrapRepository: ScrapRepository
 ) {
@@ -53,7 +54,7 @@ class MessageFactory(
         return this.map { messageCacheStore[it.id]!!.second }
     }
 
-    private fun RawMessage.toItem(): Message {
+    private suspend fun RawMessage.toItem(): Message {
         return Message(
             id = id,
             content = id,
@@ -61,26 +62,18 @@ class MessageFactory(
             reaction = reactionRepository.get(id),
             scrap = flow {
                 emit(scrapRepository.get(id))
-            }.shareIn(coroutineScope, SharingStarted.Eagerly, 1)
+            }.shareIn(CoroutineScope(coroutineContext), SharingStarted.Eagerly, 1)
         )
     }
 }
 
-class MainViewModel : ViewModel() {
-
-    private val rawMessageRepository = RawMessageRepository(30, 3000)
-
-    private val manualReactionPushDataSource = ManualReactionPushDataSource()
-    private val reactionRepository = ReactionRepository(
-        reactionPullDataSource = ReactionPullDataSource(1500),
-        reactionPushDataSource = manualReactionPushDataSource
-    )
-
-    private val messageFactory = MessageFactory(
-        viewModelScope,
-        reactionRepository = reactionRepository,
-        scrapRepository = ScrapRepository(1000)
-    )
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val rawMessageRepository: RawMessageRepository,
+    private val reactionRepository: ReactionRepository,
+    private val messageFactory: MessageFactory,
+    private val manualReactionPushDataSource: ManualReactionPushDataSource,
+) : ViewModel() {
 
     private val rawItemsFlow = OrderedMapFlow<Int, RawMessage>()
 

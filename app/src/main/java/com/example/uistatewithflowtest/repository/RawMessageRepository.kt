@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import javax.inject.Singleton
 
 data class RawMessage(
     val id: Int,
@@ -17,6 +18,7 @@ private fun Int.toRawMessage(): RawMessage {
     )
 }
 
+@Singleton
 class RawMessageRepository(
     private val pushCount: Int = 10,
     private val pushInterval: Long = 3000

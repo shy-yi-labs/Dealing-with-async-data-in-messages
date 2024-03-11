@@ -10,7 +10,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class ReactionPullDataSource(
     private val getDelay: Long = 1000,
 ) {
@@ -27,6 +30,7 @@ interface ReactionPushDataSource {
 }
 
 @OptIn(DelicateCoroutinesApi::class)
+@Singleton
 class RandomReactionPushDataSource(
     private val pushInterval: Long = 2000,
     private val pushTargetIdsRange: IntRange = 0 .. 100,
@@ -52,7 +56,8 @@ class RandomReactionPushDataSource(
     }
 }
 
-class ManualReactionPushDataSource: ReactionPushDataSource {
+@Singleton
+class ManualReactionPushDataSource @Inject constructor(): ReactionPushDataSource {
 
     private val pushEventChannel = Channel<ReactionEvent>()
     override val pushEvents: Flow<ReactionEvent> = pushEventChannel.consumeAsFlow()

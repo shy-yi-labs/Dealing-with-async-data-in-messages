@@ -1,6 +1,7 @@
 package com.example.uistatewithflowtest.repository
 
 import kotlinx.coroutines.delay
+import javax.inject.Singleton
 
 data class Scrap(val value: Int) {
 
@@ -9,6 +10,7 @@ data class Scrap(val value: Int) {
     }
 }
 
+@Singleton
 class ScrapRepository(
     private val delayBy: Long = 1000
 ) {

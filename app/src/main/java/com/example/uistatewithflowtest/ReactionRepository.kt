@@ -4,6 +4,8 @@ import com.example.uistatewithflowtest.repository.ReactionPullDataSource
 import com.example.uistatewithflowtest.repository.ReactionPushDataSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class Reaction(val value: Int) {
 
@@ -39,7 +41,8 @@ sealed class ReactionEvent {
     }
 }
 
-class ReactionRepository(
+@Singleton
+class ReactionRepository @Inject constructor(
     private val reactionPullDataSource: ReactionPullDataSource,
     private val reactionPushDataSource: ReactionPushDataSource,
 ) {
