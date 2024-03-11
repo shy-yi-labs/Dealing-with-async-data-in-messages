@@ -20,9 +20,16 @@ class OrderedMapFlow<K, V>: Flow<Map<K, V>> {
         }
     }
 
-    suspend fun putAll(rawItems: List<Pair<K, V>>) {
+    suspend fun putAll(pairs: List<Pair<K, V>>) {
         mutex.withLock {
-            treeMap.putAll(rawItems)
+            treeMap.putAll(pairs)
+            stateFlow.emit(treeMap)
+        }
+    }
+
+    suspend fun delete(key: K) {
+        mutex.withLock {
+            treeMap.remove(key)
             stateFlow.emit(treeMap)
         }
     }
