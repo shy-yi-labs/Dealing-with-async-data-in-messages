@@ -2,10 +2,13 @@ package com.example.uistatewithflowtest
 
 import com.example.uistatewithflowtest.repository.ReactionPullDataSource
 import com.example.uistatewithflowtest.repository.ReactionPushDataSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.coroutineContext
 
 data class Reaction(val value: Int) {
 
@@ -70,11 +73,13 @@ class ReactionRepository @Inject constructor(
     }
 
     suspend fun fetch(ids: List<Long>) {
-        val pairs = reactionPullDataSource
-            .get(ids)
-            .mapNotNull { (id, reaction) ->
-                reaction?.let { Pair(id, reaction) }
-            }
-        mapFlow.putAll(pairs)
+        CoroutineScope(coroutineContext).launch {
+            val pairs = reactionPullDataSource
+                .get(ids)
+                .mapNotNull { (id, reaction) ->
+                    reaction?.let { Pair(id, reaction) }
+                }
+            mapFlow.putAll(pairs)
+        }
     }
 }
