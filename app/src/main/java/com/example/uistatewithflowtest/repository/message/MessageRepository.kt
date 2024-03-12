@@ -18,6 +18,7 @@ import kotlin.coroutines.coroutineContext
 
 data class Message(
     val id: Long,
+    val channelId: Long,
     val content: Long,
     val staticValue: String,
     val reaction: Flow<Reaction?>,
@@ -52,7 +53,7 @@ class MessageRepository @Inject constructor(
             messagesStates[channelId] = messagesState
             rawMessagesMap[channelId] = mapFlow
 
-            mapFlow.init()
+            mapFlow.init(channelId)
 
             mapFlow
                 .filter { messagesState.allowPush }
@@ -75,18 +76,14 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    private suspend fun OrderedMapFlow<Long, RawMessage>.init() {
+    private suspend fun OrderedMapFlow<Long, RawMessage>.init(channelId: Long) {
         CoroutineScope(coroutineContext).launch {
-            putAll(rawMessageRepository.fetchLatest(5).map { Pair(it.id, it) })
+            putAll(rawMessageRepository.fetchLatest(channelId, 5).map { Pair(it.id, it) })
 
             launch {
-                rawMessageRepository.pushes.collect {
+                rawMessageRepository.pushes.filter { it.channelId == channelId }.collect {
                     put(it.id, it)
                 }
-            }
-
-            launch {
-                reactionRepository.collectPushes()
             }
         }
     }

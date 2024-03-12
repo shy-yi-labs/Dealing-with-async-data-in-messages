@@ -35,6 +35,7 @@ class MessageFactory @Inject constructor(
     private suspend fun RawMessage.toItem(): Message {
         return Message(
             id = id,
+            channelId = channelId,
             content = id,
             staticValue = value,
             reaction = reactionRepository.get(id),

@@ -8,12 +8,14 @@ import javax.inject.Singleton
 
 data class RawMessage(
     val id: Long,
+    val channelId: Long,
     val value: String
 )
 
-private fun Long.toRawMessage(): RawMessage {
+private fun Long.toRawMessage(channelId: Long): RawMessage {
     return RawMessage(
         this,
+        channelId,
         "$this!"
     )
 }
@@ -24,22 +26,14 @@ class RawMessageRepository(
     private val pushInterval: Long = 3000
 ) {
     private val mutex = Mutex()
-    private val rawMessages = MutableList(100) { it.toLong().toRawMessage() }
+    private val rawMessages = MutableList(100) { it.toLong().toRawMessage(getRandomChannel()) }
 
     suspend fun fetchLatest(
+        channelId: Long,
         count: Int
     ): List<RawMessage> {
         return mutex.withLock {
-            rawMessages.takeLast(count)
-        }
-    }
-
-    suspend fun fetchRange(
-        start: Int,
-        end: Int
-    ): List<RawMessage> {
-        return mutex.withLock {
-            rawMessages.slice(start .. end)
+            rawMessages.filter { it.channelId == channelId }.takeLast(count)
         }
     }
 
@@ -47,10 +41,12 @@ class RawMessageRepository(
         for(i in 100L .. (100 + pushCount)) {
             delay(pushInterval)
             mutex.withLock {
-                val rawItem = i.toRawMessage()
+                val rawItem = i.toRawMessage(getRandomChannel())
                 rawMessages.add(rawItem)
                 emit(rawItem)
             }
         }
     }
+
+    private fun getRandomChannel(): Long = (0L..3L).random()
 }

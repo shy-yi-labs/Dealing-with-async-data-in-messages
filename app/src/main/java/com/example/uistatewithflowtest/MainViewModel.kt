@@ -1,5 +1,6 @@
 package com.example.uistatewithflowtest
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
@@ -21,15 +22,18 @@ data class MainUiState(
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     messageRepository: MessageRepository,
     private val manualReactionPushDataSource: ManualReactionPushDataSource,
 ) : ViewModel() {
+
+    val channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L
 
     @OptIn(FlowPreview::class)
     val uiState = flow {
         val messages = messageRepository
             .getMessages(
-                channelId = 0,
+                channelId = channelId,
                 allowPush = true,
                 awaitInitialization = false
             )
@@ -43,5 +47,9 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             manualReactionPushDataSource.send(reactionEvent)
         }
+    }
+
+    companion object {
+        const val ARG_CHANNEL_ID = "argChannelId"
     }
 }

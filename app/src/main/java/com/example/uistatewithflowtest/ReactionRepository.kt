@@ -3,6 +3,7 @@ package com.example.uistatewithflowtest
 import com.example.uistatewithflowtest.repository.ReactionPullDataSource
 import com.example.uistatewithflowtest.repository.ReactionPushDataSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -51,7 +52,19 @@ class ReactionRepository @Inject constructor(
 ) {
     private val mapFlow = OrderedMapFlow<Long, Reaction>()
 
-    suspend fun collectPushes() {
+    private var pushCollectJob: Job? = null
+
+    suspend fun get(id: Long): Flow<Reaction?> {
+        pushCollectJob ?: run {
+            pushCollectJob = CoroutineScope(coroutineContext).launch {
+                collectPushes()
+            }
+        }
+
+        return mapFlow.map { it[id] }
+    }
+
+    private suspend fun collectPushes() {
         reactionPushDataSource.pushEvents.collect { event ->
             when(event) {
                 is ReactionEvent.Delete -> {
@@ -65,10 +78,6 @@ class ReactionRepository @Inject constructor(
                 }
             }
         }
-    }
-
-    fun get(id: Long): Flow<Reaction?> {
-        return mapFlow.map { it[id] }
     }
 
     suspend fun fetch(ids: List<Long>) {
