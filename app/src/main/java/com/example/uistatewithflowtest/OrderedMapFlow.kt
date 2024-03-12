@@ -11,30 +11,36 @@ class OrderedMapFlow<K, V>: Flow<Map<K, V>> {
 
     private val mutex = Mutex()
     private val treeMap = TreeMap<K, V>()
-    private val stateFlow = MutableSharedFlow<TreeMap<K, V>>(replay = 1)
+    private val sharedFlow = MutableSharedFlow<TreeMap<K, V>>(replay = 1)
 
     suspend fun put(key: K, value: V) {
         mutex.withLock {
             treeMap[key] = value
-            stateFlow.emit(treeMap)
+            sharedFlow.emit(treeMap)
         }
     }
 
     suspend fun putAll(pairs: List<Pair<K, V>>) {
         mutex.withLock {
             treeMap.putAll(pairs)
-            stateFlow.emit(treeMap)
+            sharedFlow.emit(treeMap)
         }
     }
 
     suspend fun delete(key: K) {
         mutex.withLock {
             treeMap.remove(key)
-            stateFlow.emit(treeMap)
+            sharedFlow.emit(treeMap)
+        }
+    }
+
+    suspend fun clear() {
+        mutex.withLock {
+            treeMap.clear()
         }
     }
 
     override suspend fun collect(collector: FlowCollector<Map<K, V>>) {
-        stateFlow.collect(collector)
+        sharedFlow.collect(collector)
     }
 }
