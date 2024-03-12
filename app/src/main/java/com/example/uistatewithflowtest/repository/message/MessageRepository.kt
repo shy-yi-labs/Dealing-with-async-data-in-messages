@@ -46,7 +46,7 @@ class MessageRepository @Inject constructor(
                     .map { it.values }
                     .map { rawMessages ->
                         with(messageFactory) {
-                            rawMessages.toMessagess()
+                            rawMessages.toMessages()
                         }
                     }
                     .onEach { if (awaitInitialization) it.await() }
