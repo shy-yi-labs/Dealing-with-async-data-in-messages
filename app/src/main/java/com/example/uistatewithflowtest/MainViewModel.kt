@@ -28,17 +28,16 @@ class MainViewModel @Inject constructor(
     @OptIn(FlowPreview::class)
     val uiState = flow {
         val messages = messageRepository
-            .getMessages()
+            .getMessages(
+                channelId = 0,
+                allowPush = true,
+                awaitInitialization = false
+            )
             .map { MainUiState(it) }
         emit(messages)
     }
         .flattenConcat()
         .stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
-
-    init {
-        messageRepository.isFlowOpen = true
-        messageRepository.awaitInitialization = false
-    }
 
     fun triggerNewReactionEvent(reactionEvent: ReactionEvent) {
         viewModelScope.launch {

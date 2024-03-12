@@ -24,36 +24,49 @@ data class Message(
     val scrap: Flow<Scrap?>
 )
 
+data class MessagesState(
+    var allowPush: Boolean,
+    var awaitInitialization: Boolean
+)
+
 class MessageRepository @Inject constructor(
     private val messageFactory: MessageFactory,
     private val rawMessageRepository: RawMessageRepository,
     private val reactionRepository: ReactionRepository,
 ) {
 
-    private val mapFlow = OrderedMapFlow<Long, RawMessage>()
+    private val messagesMap = mutableMapOf<Long, Flow<List<Message>>>()
+    private val messagesStates = mutableMapOf<Long, MessagesState>()
+    private val rawMessagesMap = mutableMapOf<Long, OrderedMapFlow<Long, RawMessage>>()
 
-    private var messages: Flow<List<Message>>? = null
+    suspend fun getMessages(
+        channelId: Long,
+        allowPush: Boolean,
+        awaitInitialization: Boolean
+    ): Flow<List<Message>> {
+        val messages = messagesMap[channelId]
 
-    var isFlowOpen = true
-    var awaitInitialization = false
+        return messages ?: run {
+            val mapFlow = OrderedMapFlow<Long, RawMessage>()
+            val messagesState = MessagesState(allowPush, awaitInitialization)
+            messagesStates[channelId] = messagesState
+            rawMessagesMap[channelId] = mapFlow
 
-    suspend fun getMessages(): Flow<List<Message>> {
-            return messages ?: run {
-                init()
+            mapFlow.init()
 
-                mapFlow
-                    .filter { isFlowOpen }
-                    .map { it.values }
-                    .map { rawMessages ->
-                        with(messageFactory) {
-                            rawMessages.toMessages()
-                        }
+            mapFlow
+                .filter { messagesState.allowPush }
+                .map { it.values }
+                .map { rawMessages ->
+                    with(messageFactory) {
+                        rawMessages.toMessages()
                     }
-                    .onEach { if (awaitInitialization) it.await() }
-            }.also {
-                messages = it
-            }
+                }
+                .onEach { if (messagesState.awaitInitialization) it.await() }
+        }.also {
+            messagesMap[channelId] = it
         }
+    }
 
     private suspend fun List<Message>.await() {
         forEach {
@@ -62,13 +75,13 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    private suspend fun init() {
+    private suspend fun OrderedMapFlow<Long, RawMessage>.init() {
         CoroutineScope(coroutineContext).launch {
-            mapFlow.putAll(rawMessageRepository.fetchLatest(5).map { Pair(it.id, it) })
+            putAll(rawMessageRepository.fetchLatest(5).map { Pair(it.id, it) })
 
             launch {
                 rawMessageRepository.pushes.collect {
-                    mapFlow.put(it.id, it)
+                    put(it.id, it)
                 }
             }
 
@@ -78,7 +91,11 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    suspend fun clear() {
-        mapFlow.clear()
+    suspend fun clear(channelId: Long) {
+        rawMessagesMap[channelId]?.clear()
+    }
+
+    fun getMessagesState(channelId: Long): MessagesState? {
+        return messagesStates[channelId]
     }
 }

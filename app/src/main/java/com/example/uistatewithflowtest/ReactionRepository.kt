@@ -50,7 +50,6 @@ class ReactionRepository @Inject constructor(
     private val reactionPushDataSource: ReactionPushDataSource,
 ) {
     private val mapFlow = OrderedMapFlow<Long, Reaction>()
-    private val reactions: Flow<Map<Long, Reaction>> = mapFlow
 
     suspend fun collectPushes() {
         reactionPushDataSource.pushEvents.collect { event ->
@@ -69,7 +68,7 @@ class ReactionRepository @Inject constructor(
     }
 
     fun get(id: Long): Flow<Reaction?> {
-        return reactions.map { it[id] }
+        return mapFlow.map { it[id] }
     }
 
     suspend fun fetch(ids: List<Long>) {
