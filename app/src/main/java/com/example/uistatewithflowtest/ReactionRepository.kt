@@ -21,16 +21,16 @@ data class Reaction(val value: Int) {
 }
 
 sealed class ReactionEvent {
-    abstract val targetId: Int
+    abstract val targetId: Long
 
-    data class Insert(override val targetId: Int, val reaction: Reaction): ReactionEvent()
-    data class Update(override val targetId: Int, val reaction: Reaction): ReactionEvent()
-    data class Delete(override val targetId: Int): ReactionEvent()
+    data class Insert(override val targetId: Long, val reaction: Reaction): ReactionEvent()
+    data class Update(override val targetId: Long, val reaction: Reaction): ReactionEvent()
+    data class Delete(override val targetId: Long): ReactionEvent()
 
     companion object {
 
-        fun random(targetId: Int): ReactionEvent {
-            val eventProviders = listOf<(Int) -> ReactionEvent>(
+        fun random(targetId: Long): ReactionEvent {
+            val eventProviders = listOf<(Long) -> ReactionEvent>(
                 { Insert(targetId, Reaction.random()) },
                 { Update(targetId, Reaction.random()) },
                 { Delete(targetId) },
@@ -46,8 +46,8 @@ class ReactionRepository @Inject constructor(
     private val reactionPullDataSource: ReactionPullDataSource,
     private val reactionPushDataSource: ReactionPushDataSource,
 ) {
-    private val mapFlow = OrderedMapFlow<Int, Reaction>()
-    private val reactions: Flow<Map<Int, Reaction>> = mapFlow
+    private val mapFlow = OrderedMapFlow<Long, Reaction>()
+    private val reactions: Flow<Map<Long, Reaction>> = mapFlow
 
     suspend fun collectPushes() {
         reactionPushDataSource.pushEvents.collect { event ->
@@ -65,11 +65,11 @@ class ReactionRepository @Inject constructor(
         }
     }
 
-    fun get(id: Int): Flow<Reaction?> {
+    fun get(id: Long): Flow<Reaction?> {
         return reactions.map { it[id] }
     }
 
-    suspend fun fetch(ids: List<Int>) {
+    suspend fun fetch(ids: List<Long>) {
         val pairs = reactionPullDataSource
             .get(ids)
             .mapNotNull { (id, reaction) ->

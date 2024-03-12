@@ -7,11 +7,11 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Singleton
 
 data class RawMessage(
-    val id: Int,
+    val id: Long,
     val value: String
 )
 
-private fun Int.toRawMessage(): RawMessage {
+private fun Long.toRawMessage(): RawMessage {
     return RawMessage(
         this,
         "$this!"
@@ -24,7 +24,7 @@ class RawMessageRepository(
     private val pushInterval: Long = 3000
 ) {
     private val mutex = Mutex()
-    private val rawMessages = MutableList(100) { it.toRawMessage() }
+    private val rawMessages = MutableList(100) { it.toLong().toRawMessage() }
 
     suspend fun fetchLatest(
         count: Int
@@ -44,7 +44,7 @@ class RawMessageRepository(
     }
 
     val pushes = flow {
-        for(i in 100 .. (100 + pushCount)) {
+        for(i in 100L .. (100 + pushCount)) {
             delay(pushInterval)
             mutex.withLock {
                 val rawItem = i.toRawMessage()

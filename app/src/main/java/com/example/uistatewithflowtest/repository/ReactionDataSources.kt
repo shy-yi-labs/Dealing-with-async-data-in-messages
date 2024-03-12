@@ -18,7 +18,7 @@ class ReactionPullDataSource(
     private val getDelay: Long = 1000,
 ) {
 
-    suspend fun get(ids: List<Int>): Map<Int, Reaction?> {
+    suspend fun get(ids: List<Long>): Map<Long, Reaction?> {
         delay(getDelay)
         return ids.associateWith { if ((0 until 2).random() == 0) Reaction.random() else null }
     }
@@ -33,7 +33,7 @@ interface ReactionPushDataSource {
 @Singleton
 class RandomReactionPushDataSource(
     private val pushInterval: Long = 2000,
-    private val pushTargetIdsRange: IntRange = 0 .. 100,
+    private val pushTargetIdsRange: LongRange = 0L .. 100L,
 ): ReactionPushDataSource {
 
     private val pushEventChannel = Channel<ReactionEvent>()

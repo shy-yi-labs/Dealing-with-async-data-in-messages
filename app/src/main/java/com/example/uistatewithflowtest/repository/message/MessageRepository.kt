@@ -17,8 +17,8 @@ import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 
 data class Message(
-    val id: Int,
-    val content: Int,
+    val id: Long,
+    val content: Long,
     val staticValue: String,
     val reaction: Flow<Reaction?>,
     val scrap: Flow<Scrap?>
@@ -30,7 +30,7 @@ class MessageRepository @Inject constructor(
     private val reactionRepository: ReactionRepository,
 ) {
 
-    private val mapFlow = OrderedMapFlow<Int, RawMessage>()
+    private val mapFlow = OrderedMapFlow<Long, RawMessage>()
 
     private var messages: Flow<List<Message>>? = null
 

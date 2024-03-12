@@ -14,13 +14,13 @@ class MessageFactory @Inject constructor(
     private val reactionRepository: ReactionRepository,
     private val scrapRepository: ScrapRepository
 ) {
-    private val messageCacheStore = mutableMapOf<Int, Pair<RawMessage, Message>>()
+    private val messageCacheStore = mutableMapOf<Long, Pair<RawMessage, Message>>()
 
     suspend fun Collection<RawMessage>.toMessagess(): List<Message> {
-        val rawMessagesNotInCache = this.filter { rawItem ->
-            val cache = messageCacheStore[rawItem.id]
+        val rawMessagesNotInCache = this.filter { rawMessage ->
+            val cache = messageCacheStore[rawMessage.id]
             // Is in cache and rawItem is equal to old rawItem
-            return@filter (cache != null && rawItem == cache.first).not()
+            return@filter (cache != null && rawMessage == cache.first).not()
         }
 
         reactionRepository.fetch(rawMessagesNotInCache.map { it.id })
