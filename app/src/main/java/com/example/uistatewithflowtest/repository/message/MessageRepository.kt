@@ -2,7 +2,6 @@ package com.example.uistatewithflowtest.repository.message
 
 import com.example.uistatewithflowtest.OrderedMapFlow
 import com.example.uistatewithflowtest.Reaction
-import com.example.uistatewithflowtest.ReactionRepository
 import com.example.uistatewithflowtest.repository.RawMessage
 import com.example.uistatewithflowtest.repository.RawMessageRepository
 import com.example.uistatewithflowtest.repository.Scrap
@@ -33,7 +32,6 @@ data class MessagesState(
 class MessageRepository @Inject constructor(
     private val messageFactory: MessageFactory,
     private val rawMessageRepository: RawMessageRepository,
-    private val reactionRepository: ReactionRepository,
 ) {
 
     private val messagesMap = mutableMapOf<Long, Flow<List<Message>>>()
