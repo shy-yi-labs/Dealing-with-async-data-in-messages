@@ -16,7 +16,7 @@ object HiltModule {
 
     @Provides
     fun provideRawMessageRepository(): RawMessageRepository {
-        return RawMessageRepository(Int.MAX_VALUE, 500)
+        return RawMessageRepository(10000, 500)
     }
 
     @Provides

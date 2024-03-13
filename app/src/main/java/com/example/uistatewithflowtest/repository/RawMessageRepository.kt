@@ -1,7 +1,11 @@
 package com.example.uistatewithflowtest.repository
 
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Singleton
@@ -37,6 +41,7 @@ class RawMessageRepository(
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     val pushes = flow {
         for(i in 100L .. (100 + pushCount)) {
             delay(pushInterval)
@@ -46,7 +51,7 @@ class RawMessageRepository(
                 emit(rawItem)
             }
         }
-    }
+    }.shareIn(GlobalScope, SharingStarted.Eagerly)
 
     private fun getRandomChannel(): Long = (0L..3L).random()
 }
