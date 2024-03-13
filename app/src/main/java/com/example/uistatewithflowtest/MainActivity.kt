@@ -21,7 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,7 +52,7 @@ class MainActivity : ComponentActivity() {
 
                         LazyColumn(
                             reverseLayout = true,
-                            modifier = Modifier.weight(7f)
+                            modifier = Modifier.weight(1f)
                         ) {
                             item {
                                 Row(
@@ -104,7 +107,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        Column(modifier = Modifier.weight(3f)) {
+                        Column {
                             val context = LocalContext.current
                             Row {
                                 for (i in 0L..3L) {
@@ -137,6 +140,28 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .clickable {
                                             viewModel.dropMessages()
+                                        }
+                                )
+                            }
+                            Row {
+                                var isPushOn by rememberSaveable { mutableStateOf(true) }
+
+                                RowText(
+                                    text = "Push: $isPushOn",
+                                    modifier = Modifier
+                                        .clickable {
+                                            isPushOn = !isPushOn
+                                            viewModel.setIsPushAllowed(isPushOn)
+                                        }
+                                )
+
+                                var isAsyncOn by rememberSaveable { mutableStateOf(true) }
+                                RowText(
+                                    text = "Async: $isAsyncOn",
+                                    modifier = Modifier
+                                        .clickable {
+                                            isAsyncOn = !isAsyncOn
+                                            viewModel.setAwaitInitialization(!isAsyncOn)
                                         }
                                 )
                             }

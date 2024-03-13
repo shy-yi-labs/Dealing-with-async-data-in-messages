@@ -74,6 +74,14 @@ class MainViewModel @Inject constructor(
         messageRepository.drop(channelId, extraKey)
     }
 
+    fun setIsPushAllowed(isPushAllowed: Boolean) {
+        messageRepository.getMessagesState(channelId, extraKey).allowPush = isPushAllowed
+    }
+
+    fun setAwaitInitialization(awaitInitialization: Boolean) {
+        messageRepository.getMessagesState(channelId, extraKey).awaitInitialization = awaitInitialization
+    }
+
     override fun onCleared() {
         super.onCleared()
 
