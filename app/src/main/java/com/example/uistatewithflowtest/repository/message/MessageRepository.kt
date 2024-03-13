@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
 data class Message(
@@ -29,6 +30,7 @@ data class MessagesState(
     var awaitInitialization: Boolean
 )
 
+@Singleton
 class MessageRepository @Inject constructor(
     private val messageFactory: MessageFactory,
     private val rawMessageRepository: RawMessageRepository,
@@ -46,8 +48,8 @@ class MessageRepository @Inject constructor(
         val messages = messagesMap[channelId]
 
         return messages ?: run {
-            val mapFlow = OrderedMapFlow<Long, RawMessage>()
             val messagesState = MessagesState(allowPush, awaitInitialization)
+            val mapFlow = OrderedMapFlow<Long, RawMessage>()
             messagesStates[channelId] = messagesState
             rawMessagesMap[channelId] = mapFlow
 
