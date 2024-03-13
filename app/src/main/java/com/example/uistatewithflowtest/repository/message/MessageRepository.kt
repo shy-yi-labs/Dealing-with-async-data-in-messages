@@ -80,10 +80,8 @@ class MessageRepository @Inject constructor(
         CoroutineScope(coroutineContext).launch {
             putAll(rawMessageRepository.fetchLatest(channelId, 5).map { Pair(it.id, it) })
 
-            launch {
-                rawMessageRepository.pushes.filter { it.channelId == channelId }.collect {
-                    put(it.id, it)
-                }
+            rawMessageRepository.pushes.filter { it.channelId == channelId }.collect {
+                put(it.id, it)
             }
         }
     }
