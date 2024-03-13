@@ -27,7 +27,7 @@ class MainViewModel @Inject constructor(
     private val manualReactionPushDataSource: ManualReactionPushDataSource,
 ) : ViewModel() {
 
-    val channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L
+    private val channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L
 
     @OptIn(FlowPreview::class)
     val uiState = flow {
