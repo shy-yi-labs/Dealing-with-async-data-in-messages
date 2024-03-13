@@ -117,6 +117,22 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                            Row {
+                                RowText(
+                                    text = "Clear",
+                                    modifier = Modifier
+                                        .clickable {
+                                            viewModel.clearMessages()
+                                        }
+                                )
+                                RowText(
+                                    text = "Init",
+                                    modifier = Modifier
+                                        .clickable {
+                                            viewModel.initMessages()
+                                        }
+                                )
+                            }
                         }
                     }
                 }

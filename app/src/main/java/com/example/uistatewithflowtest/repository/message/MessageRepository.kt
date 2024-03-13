@@ -36,27 +36,31 @@ class MessageRepository @Inject constructor(
     private val rawMessageRepository: RawMessageRepository,
 ) {
 
-    private val messagesMap = mutableMapOf<Long, Flow<List<Message>>>()
-    private val messagesStates = mutableMapOf<Long, MessagesState>()
-    private val rawMessagesMap = mutableMapOf<Long, OrderedMapFlow<Long, RawMessage>>()
+    private data class MessagesKey(
+        val channelId: Long,
+        val extraKey: Long?,
+    )
+
+    private val messagesMap = mutableMapOf<MessagesKey, Flow<List<Message>>>()
+    private val messagesStates = mutableMapOf<MessagesKey, MessagesState>()
+    private val rawMessagesMap = mutableMapOf<MessagesKey, OrderedMapFlow<Long, RawMessage>>()
 
     suspend fun getMessages(
         channelId: Long,
         allowPush: Boolean,
-        awaitInitialization: Boolean
+        awaitInitialization: Boolean,
+        extraKey: Long? = null,
     ): Flow<List<Message>> {
-        val messages = messagesMap[channelId]
+        val key = MessagesKey(channelId, extraKey)
+        val messages = messagesMap[key]
 
         return messages ?: run {
             val messagesState = MessagesState(allowPush, awaitInitialization)
             val mapFlow = OrderedMapFlow<Long, RawMessage>()
-            messagesStates[channelId] = messagesState
-            rawMessagesMap[channelId] = mapFlow
-
-            mapFlow.init(channelId)
+            messagesStates[key] = messagesState
+            rawMessagesMap[key] = mapFlow
 
             mapFlow
-                .filter { messagesState.allowPush }
                 .map { it.values }
                 .map { rawMessages ->
                     with(messageFactory) {
@@ -65,7 +69,7 @@ class MessageRepository @Inject constructor(
                 }
                 .onEach { if (messagesState.awaitInitialization) it.await() }
         }.also {
-            messagesMap[channelId] = it
+            messagesMap[key] = it
         }
     }
 
@@ -76,21 +80,33 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    private suspend fun OrderedMapFlow<Long, RawMessage>.init(channelId: Long) {
+    private suspend fun OrderedMapFlow<Long, RawMessage>.init(messagesKey: MessagesKey) {
         CoroutineScope(coroutineContext).launch {
-            putAll(rawMessageRepository.fetchLatest(channelId, 5).map { Pair(it.id, it) })
+            putAll(rawMessageRepository.fetchLatest(messagesKey.channelId, 5).map { Pair(it.id, it) })
 
-            rawMessageRepository.pushes.filter { it.channelId == channelId }.collect {
+            val messagesState = messagesStates[messagesKey]
+            rawMessageRepository.pushes
+                .filter { messagesState?.allowPush ?: true }
+                .filter { it.channelId == messagesKey.channelId }
+                .collect {
                 put(it.id, it)
             }
         }
     }
 
-    suspend fun clear(channelId: Long) {
-        rawMessagesMap[channelId]?.clear()
+    suspend fun init(channelId: Long, extraKey: Long? = null, allowPush: Boolean = true) {
+        val key = MessagesKey(channelId, extraKey)
+        rawMessagesMap[key]?.init(key)
+        messagesStates[key]?.allowPush = allowPush
     }
 
-    fun getMessagesState(channelId: Long): MessagesState? {
-        return messagesStates[channelId]
+    suspend fun clear(channelId: Long, extraKey: Long? = null, allowPush: Boolean = false) {
+        val key = MessagesKey(channelId, extraKey)
+        rawMessagesMap[key]?.clear()
+        messagesStates[key]?.allowPush = allowPush
+    }
+
+    fun getMessagesState(channelId: Long, extraKey: Long? = null): MessagesState? {
+        return messagesStates[MessagesKey(channelId, extraKey)]
     }
 }

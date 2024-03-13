@@ -37,6 +37,7 @@ class OrderedMapFlow<K, V>: Flow<Map<K, V>> {
     suspend fun clear() {
         mutex.withLock {
             treeMap.clear()
+            sharedFlow.emit(treeMap)
         }
     }
 

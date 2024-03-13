@@ -8,6 +8,7 @@ import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.repository.message.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flattenConcat
 import kotlinx.coroutines.flow.flow
@@ -23,11 +24,13 @@ data class MainUiState(
 @HiltViewModel
 class MainViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    messageRepository: MessageRepository,
+    private val messageRepository: MessageRepository,
     private val manualReactionPushDataSource: ManualReactionPushDataSource,
 ) : ViewModel() {
 
     private val channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L
+
+    private val extraKey = this.hashCode().toLong()
 
     @OptIn(FlowPreview::class)
     val uiState = flow {
@@ -35,7 +38,8 @@ class MainViewModel @Inject constructor(
             .getMessages(
                 channelId = channelId,
                 allowPush = true,
-                awaitInitialization = false
+                awaitInitialization = false,
+                extraKey = extraKey
             )
             .map { MainUiState(it) }
         emit(messages)
@@ -43,10 +47,32 @@ class MainViewModel @Inject constructor(
         .flattenConcat()
         .stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
+    init {
+        initMessages()
+    }
+
     fun triggerNewReactionEvent(reactionEvent: ReactionEvent) {
         viewModelScope.launch {
             manualReactionPushDataSource.send(reactionEvent)
         }
+    }
+
+    fun initMessages() {
+        viewModelScope.launch {
+            messageRepository.init(channelId, extraKey)
+        }
+    }
+
+    fun clearMessages() {
+        viewModelScope.launch(NonCancellable) {
+            messageRepository.clear(channelId, extraKey)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        clearMessages()
     }
 
     companion object {
