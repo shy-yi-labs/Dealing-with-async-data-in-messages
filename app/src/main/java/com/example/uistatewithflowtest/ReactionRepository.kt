@@ -5,6 +5,7 @@ import com.example.uistatewithflowtest.repository.ReactionPushDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,7 +51,7 @@ class ReactionRepository @Inject constructor(
     private val reactionPullDataSource: ReactionPullDataSource,
     private val reactionPushDataSource: ReactionPushDataSource,
 ) {
-    private val mapFlow = OrderedMapFlow<Long, Reaction>()
+    private val mapFlow = OrderedMapFlow<Long, Reaction?>()
 
     private var pushCollectJob: Job? = null
 
@@ -61,7 +62,7 @@ class ReactionRepository @Inject constructor(
             }
         }
 
-        return mapFlow.map { it[id] }
+        return mapFlow.filter { it.containsKey(id) }.map { it[id] }
     }
 
     private suspend fun collectPushes() {
@@ -84,8 +85,8 @@ class ReactionRepository @Inject constructor(
         CoroutineScope(coroutineContext).launch {
             val pairs = reactionPullDataSource
                 .get(ids)
-                .mapNotNull { (id, reaction) ->
-                    reaction?.let { Pair(id, reaction) }
+                .map { (id, reaction) ->
+                    Pair(id, reaction)
                 }
             mapFlow.putAll(pairs)
         }
