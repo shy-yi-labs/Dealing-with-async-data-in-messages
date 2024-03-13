@@ -119,6 +119,13 @@ class MainActivity : ComponentActivity() {
                             }
                             Row {
                                 RowText(
+                                    text = "Init",
+                                    modifier = Modifier
+                                        .clickable {
+                                            viewModel.initMessages()
+                                        }
+                                )
+                                RowText(
                                     text = "Clear",
                                     modifier = Modifier
                                         .clickable {
@@ -126,10 +133,10 @@ class MainActivity : ComponentActivity() {
                                         }
                                 )
                                 RowText(
-                                    text = "Init",
+                                    text = "Drop",
                                     modifier = Modifier
                                         .clickable {
-                                            viewModel.initMessages()
+                                            viewModel.dropMessages()
                                         }
                                 )
                             }

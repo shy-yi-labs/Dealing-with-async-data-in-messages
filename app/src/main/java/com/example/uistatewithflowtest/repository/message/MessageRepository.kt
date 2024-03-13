@@ -6,6 +6,7 @@ import com.example.uistatewithflowtest.repository.RawMessage
 import com.example.uistatewithflowtest.repository.RawMessageRepository
 import com.example.uistatewithflowtest.repository.Scrap
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -41,8 +42,9 @@ class MessageRepository @Inject constructor(
         val extraKey: Long?,
     )
 
+    private val initJobMap = mutableMapOf<MessagesKey, Job>()
     private val messagesMap = mutableMapOf<MessagesKey, Flow<List<Message>>>()
-    private val messagesStates = mutableMapOf<MessagesKey, MessagesState>()
+    private val messagesStateMap = mutableMapOf<MessagesKey, MessagesState>()
     private val rawMessagesMap = mutableMapOf<MessagesKey, OrderedMapFlow<Long, RawMessage>>()
 
     suspend fun getMessages(
@@ -57,7 +59,7 @@ class MessageRepository @Inject constructor(
         return messages ?: run {
             val messagesState = MessagesState(allowPush, awaitInitialization)
             val mapFlow = OrderedMapFlow<Long, RawMessage>()
-            messagesStates[key] = messagesState
+            messagesStateMap[key] = messagesState
             rawMessagesMap[key] = mapFlow
 
             mapFlow
@@ -80,11 +82,11 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    private suspend fun OrderedMapFlow<Long, RawMessage>.init(messagesKey: MessagesKey) {
-        CoroutineScope(coroutineContext).launch {
+    private suspend fun OrderedMapFlow<Long, RawMessage>.init(messagesKey: MessagesKey): Job {
+        return CoroutineScope(coroutineContext).launch {
             putAll(rawMessageRepository.fetchLatest(messagesKey.channelId, 5).map { Pair(it.id, it) })
 
-            val messagesState = messagesStates[messagesKey]
+            val messagesState = messagesStateMap[messagesKey]
             rawMessageRepository.pushes
                 .filter { messagesState?.allowPush ?: true }
                 .filter { it.channelId == messagesKey.channelId }
@@ -96,17 +98,27 @@ class MessageRepository @Inject constructor(
 
     suspend fun init(channelId: Long, extraKey: Long? = null, allowPush: Boolean = true) {
         val key = MessagesKey(channelId, extraKey)
-        rawMessagesMap[key]?.init(key)
-        messagesStates[key]?.allowPush = allowPush
+        val job = rawMessagesMap[key]?.init(key)
+        if (job != null) initJobMap[key] = job
+        messagesStateMap[key]?.allowPush = allowPush
     }
 
     suspend fun clear(channelId: Long, extraKey: Long? = null, allowPush: Boolean = false) {
         val key = MessagesKey(channelId, extraKey)
         rawMessagesMap[key]?.clear()
-        messagesStates[key]?.allowPush = allowPush
+        messagesStateMap[key]?.allowPush = allowPush
+    }
+
+    fun drop(channelId: Long, extraKey: Long? = null) {
+        val key = MessagesKey(channelId, extraKey)
+        initJobMap[key]?.cancel()
+        initJobMap.remove(key)
+        rawMessagesMap.remove(key)
+        messagesMap.remove(key)
+        messagesStateMap.remove(key)
     }
 
     fun getMessagesState(channelId: Long, extraKey: Long? = null): MessagesState? {
-        return messagesStates[MessagesKey(channelId, extraKey)]
+        return messagesStateMap[MessagesKey(channelId, extraKey)]
     }
 }

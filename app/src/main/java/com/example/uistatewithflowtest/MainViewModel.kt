@@ -69,10 +69,14 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun dropMessages() {
+        messageRepository.drop(channelId, extraKey)
+    }
+
     override fun onCleared() {
         super.onCleared()
 
-        clearMessages()
+        dropMessages()
     }
 
     companion object {
