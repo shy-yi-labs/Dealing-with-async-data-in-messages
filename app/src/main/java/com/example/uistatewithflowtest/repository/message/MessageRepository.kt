@@ -26,10 +26,10 @@ data class Message(
     val scrap: Flow<Scrap?>
 )
 
-data class MessagesState(
-    var allowPush: Boolean,
+interface MessagesState {
+    var allowPush: Boolean
     var awaitInitialization: Boolean
-)
+}
 
 @Singleton
 class MessageRepository @Inject constructor(
@@ -42,37 +42,36 @@ class MessageRepository @Inject constructor(
         val extraKey: Long?,
     )
 
-    private val initJobMap = mutableMapOf<MessagesKey, Job>()
-    private val messagesMap = mutableMapOf<MessagesKey, Flow<List<Message>>>()
-    private val messagesStateMap = mutableMapOf<MessagesKey, MessagesState>()
-    private val rawMessagesMap = mutableMapOf<MessagesKey, OrderedMapFlow<Long, RawMessage>>()
+    private inner class MessagesStateImpl: MessagesState {
+        var initJob: Job? = null
+        override var allowPush: Boolean = true
+        override var awaitInitialization: Boolean = false
+        val rawMessageMaps: OrderedMapFlow<Long, RawMessage> = OrderedMapFlow()
 
-    suspend fun getMessages(
+        val messages = rawMessageMaps
+            .map { it.values }
+            .map { rawMessages ->
+                with(messageFactory) {
+                    rawMessages.toMessages()
+                }
+            }
+            .onEach { if (awaitInitialization) it.await() }
+    }
+
+    private val messagesStateMap = mutableMapOf<MessagesKey, MessagesStateImpl>()
+
+    fun getMessages(
         channelId: Long,
-        allowPush: Boolean,
-        awaitInitialization: Boolean,
         extraKey: Long? = null,
     ): Flow<List<Message>> {
         val key = MessagesKey(channelId, extraKey)
-        val messages = messagesMap[key]
-
-        return messages ?: run {
-            val messagesState = MessagesState(allowPush, awaitInitialization)
-            val mapFlow = OrderedMapFlow<Long, RawMessage>()
-            messagesStateMap[key] = messagesState
-            rawMessagesMap[key] = mapFlow
-
-            mapFlow
-                .map { it.values }
-                .map { rawMessages ->
-                    with(messageFactory) {
-                        rawMessages.toMessages()
-                    }
-                }
-                .onEach { if (messagesState.awaitInitialization) it.await() }
-        }.also {
-            messagesMap[key] = it
+        val messageState = messagesStateMap[key] ?: run {
+            MessagesStateImpl().also {
+                messagesStateMap[key] = it
+            }
         }
+
+        return messageState.messages
     }
 
     private suspend fun List<Message>.await() {
@@ -82,43 +81,58 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    private suspend fun OrderedMapFlow<Long, RawMessage>.init(messagesKey: MessagesKey): Job {
-        return CoroutineScope(coroutineContext).launch {
-            putAll(rawMessageRepository.fetchLatest(messagesKey.channelId, 5).map { Pair(it.id, it) })
+    private suspend fun MessagesStateImpl.init(messagesKey: MessagesKey) {
+        initJob = CoroutineScope(coroutineContext).launch {
+            rawMessageMaps.putAll(
+                rawMessageRepository.fetchLatest(messagesKey.channelId, 5).map { Pair(it.id, it) })
 
-            val messagesState = messagesStateMap[messagesKey]
             rawMessageRepository.pushes
-                .filter { messagesState?.allowPush ?: true }
+                .filter { allowPush }
                 .filter { it.channelId == messagesKey.channelId }
                 .collect {
-                put(it.id, it)
-            }
+                    rawMessageMaps.put(it.id, it)
+                }
         }
     }
 
-    suspend fun init(channelId: Long, extraKey: Long? = null, allowPush: Boolean = true) {
+    suspend fun init(
+        channelId: Long,
+        extraKey: Long? = null,
+        allowPush: Boolean = true,
+        awaitInitialization: Boolean
+    ) {
         val key = MessagesKey(channelId, extraKey)
-        val job = rawMessagesMap[key]?.init(key)
-        if (job != null) initJobMap[key] = job
-        messagesStateMap[key]?.allowPush = allowPush
+        val messagesState = messagesStateMap[key]
+            ?: throw getGetMessagesNotCalledException(key)
+        if (messagesState.initJob != null) throw IllegalStateException("Duplicate init call.")
+        messagesState.allowPush = allowPush
+        messagesState.awaitInitialization = awaitInitialization
+        messagesState.init(key)
     }
 
     suspend fun clear(channelId: Long, extraKey: Long? = null, allowPush: Boolean = false) {
         val key = MessagesKey(channelId, extraKey)
-        rawMessagesMap[key]?.clear()
-        messagesStateMap[key]?.allowPush = allowPush
+        val messagesState = messagesStateMap[key]
+            ?: throw getGetMessagesNotCalledException(key)
+        messagesState.allowPush = allowPush
+        messagesState.rawMessageMaps.clear()
     }
 
     fun drop(channelId: Long, extraKey: Long? = null) {
         val key = MessagesKey(channelId, extraKey)
-        initJobMap[key]?.cancel()
-        initJobMap.remove(key)
-        rawMessagesMap.remove(key)
-        messagesMap.remove(key)
+        val messagesState = messagesStateMap[key]
+            ?: throw getGetMessagesNotCalledException(key)
+        messagesState.initJob?.cancel()
         messagesStateMap.remove(key)
     }
 
-    fun getMessagesState(channelId: Long, extraKey: Long? = null): MessagesState? {
-        return messagesStateMap[MessagesKey(channelId, extraKey)]
+    fun getMessagesState(channelId: Long, extraKey: Long? = null): MessagesState {
+        val key = MessagesKey(channelId, extraKey)
+        return messagesStateMap[key]
+            ?: throw getGetMessagesNotCalledException(key)
+    }
+
+    private fun getGetMessagesNotCalledException(key: MessagesKey): IllegalStateException {
+        return IllegalStateException("getMessages() must be called before calling this method for the given key: $key")
     }
 }
