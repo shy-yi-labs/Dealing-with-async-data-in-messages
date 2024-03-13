@@ -43,7 +43,7 @@ class MessageRepository @Inject constructor(
     )
 
     private inner class MessagesStateImpl: MessagesState {
-        var initJob: Job? = null
+        var pushJob: Job? = null
         override var allowPush: Boolean = true
         override var awaitInitialization: Boolean = false
         val rawMessageMaps: OrderedMapFlow<Long, RawMessage> = OrderedMapFlow()
@@ -60,13 +60,14 @@ class MessageRepository @Inject constructor(
 
     private val messagesStateMap = mutableMapOf<MessagesKey, MessagesStateImpl>()
 
-    fun getMessages(
+    suspend fun getMessages(
         channelId: Long,
         extraKey: Long? = null,
     ): Flow<List<Message>> {
         val key = MessagesKey(channelId, extraKey)
         val messageState = messagesStateMap[key] ?: run {
             MessagesStateImpl().also {
+                it.init(key)
                 messagesStateMap[key] = it
             }
         }
@@ -74,18 +75,8 @@ class MessageRepository @Inject constructor(
         return messageState.messages
     }
 
-    private suspend fun List<Message>.await() {
-        forEach {
-            it.reaction.first()
-            it.scrap.first()
-        }
-    }
-
     private suspend fun MessagesStateImpl.init(messagesKey: MessagesKey) {
-        initJob = CoroutineScope(coroutineContext).launch {
-            rawMessageMaps.putAll(
-                rawMessageRepository.fetchLatest(messagesKey.channelId, 5).map { Pair(it.id, it) })
-
+        pushJob = CoroutineScope(coroutineContext).launch {
             rawMessageRepository.pushes
                 .filter { allowPush }
                 .filter { it.channelId == messagesKey.channelId }
@@ -95,26 +86,29 @@ class MessageRepository @Inject constructor(
         }
     }
 
+    private suspend fun List<Message>.await() {
+        forEach {
+            it.reaction.first()
+            it.scrap.first()
+        }
+    }
+
     suspend fun init(
         channelId: Long,
-        extraKey: Long? = null,
-        allowPush: Boolean = true,
-        awaitInitialization: Boolean
+        extraKey: Long? = null
     ) {
         val key = MessagesKey(channelId, extraKey)
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        if (messagesState.initJob != null) throw IllegalStateException("Duplicate init call.")
-        messagesState.allowPush = allowPush
-        messagesState.awaitInitialization = awaitInitialization
-        messagesState.init(key)
+        messagesState.rawMessageMaps.putAll(
+            rawMessageRepository.fetchLatest(key.channelId, 5).map { Pair(it.id, it) }
+        )
     }
 
-    suspend fun clear(channelId: Long, extraKey: Long? = null, allowPush: Boolean = false) {
+    suspend fun clear(channelId: Long, extraKey: Long? = null) {
         val key = MessagesKey(channelId, extraKey)
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        messagesState.allowPush = allowPush
         messagesState.rawMessageMaps.clear()
     }
 
@@ -122,7 +116,7 @@ class MessageRepository @Inject constructor(
         val key = MessagesKey(channelId, extraKey)
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        messagesState.initJob?.cancel()
+        messagesState.pushJob?.cancel()
         messagesStateMap.remove(key)
     }
 

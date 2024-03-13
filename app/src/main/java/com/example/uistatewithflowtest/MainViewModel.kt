@@ -7,8 +7,11 @@ import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
 import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.repository.message.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flattenConcat
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -29,12 +32,17 @@ class MainViewModel @Inject constructor(
 
     private val extraKey = this.hashCode().toLong()
 
-    val uiState = messageRepository
-        .getMessages(
-            channelId = channelId,
-            extraKey = extraKey
-        )
-        .map { MainUiState(it) }
+    @OptIn(FlowPreview::class)
+    val uiState = flow {
+        val messages = messageRepository
+            .getMessages(
+                channelId = channelId,
+                extraKey = extraKey
+            )
+            .map { MainUiState(it) }
+        emit(messages)
+    }
+        .flattenConcat()
         .stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
@@ -52,8 +60,6 @@ class MainViewModel @Inject constructor(
             messageRepository.init(
                 channelId = channelId,
                 extraKey = extraKey,
-                allowPush = true,
-                awaitInitialization = false
             )
         }
     }
