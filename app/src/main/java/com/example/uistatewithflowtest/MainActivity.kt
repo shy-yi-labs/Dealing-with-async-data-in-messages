@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.ui.theme.UiStateWithFlowTestTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -57,51 +59,11 @@ class MainActivity : ComponentActivity() {
                     Column(modifier = Modifier.fillMaxSize()) {
                         val uiState by viewModel.uiState.collectAsState()
 
-                        LazyColumn(
-                            reverseLayout = true,
+                        MessageList(
+                            uiState.messages,
+                            viewModel::triggerNewReactionEvent,
                             modifier = Modifier.weight(1f)
-                        ) {
-                            items(
-                                uiState.messages.reversed(),
-                                key = { it.id }
-                            ) { item ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color.LightGray)
-                                        .padding(4.dp)
-                                ) {
-                                    val reaction by item.reaction.collectAsState(initial = null)
-                                    val individualEmitValue by item.scrap.collectAsState(
-                                        initial = null
-                                    )
-
-                                    val context = LocalContext.current
-
-                                    RowText(text = item.channelId.toString())
-                                    RowText(text = item.staticValue)
-                                    RowText(
-                                        text = reaction.toString(),
-                                        modifier = remember(context, viewModel) {
-                                            Modifier
-                                                .clickable {
-                                                    val event = ReactionEvent.random(item.id)
-                                                    Toast.makeText(
-                                                        context,
-                                                        "${event::class.simpleName}",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                    viewModel.triggerNewReactionEvent(event)
-                                                }
-                                        }
-                                    )
-                                    RowText(text = individualEmitValue.toString())
-                                }
-                            }
-                        }
+                        )
 
                         Column {
                             val context = LocalContext.current
@@ -198,6 +160,74 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun MessageList(
+    messages: List<Message>,
+    onReactionClick: (ReactionEvent) -> Unit,
+    modifier: Modifier
+) {
+    val lazyListState = rememberLazyListState()
+
+    LazyColumn(
+        state = lazyListState,
+        reverseLayout = true,
+        modifier = modifier
+    ) {
+        items(
+            messages.reversed(),
+            key = { it.id }
+        ) { item ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray)
+                    .padding(4.dp)
+            ) {
+                val reaction by item.reaction.collectAsState(initial = null)
+                val individualEmitValue by item.scrap.collectAsState(
+                    initial = null
+                )
+
+                val context = LocalContext.current
+
+                RowText(
+                    text = item.channelId.toString(),
+                    modifier = Modifier.recomposeHighlighter()
+                )
+                RowText(
+                    text = item.staticValue,
+                    modifier = Modifier.recomposeHighlighter()
+                )
+                RowText(
+                    text = reaction.toString(),
+                    modifier = remember(onReactionClick) {
+                        Modifier
+                            .clickable {
+                                val event = ReactionEvent.random(item.id)
+                                Toast
+                                    .makeText(
+                                        context,
+                                        "${event::class.simpleName}",
+                                        Toast.LENGTH_SHORT
+                                    )
+                                    .show()
+                                onReactionClick(event)
+                            }
+                            .recomposeHighlighter()
+                    }
+                )
+                RowText(
+                    text = individualEmitValue.toString(),
+                    modifier = Modifier.recomposeHighlighter()
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun RowScope.RowText(
     text: String,
     modifier: Modifier = Modifier
@@ -207,6 +237,5 @@ fun RowScope.RowText(
         textAlign = TextAlign.Center,
         modifier = modifier
             .weight(1f)
-            .recomposeHighlighter()
     )
 }
