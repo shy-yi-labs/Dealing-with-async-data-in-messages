@@ -93,7 +93,7 @@ class MessageRepository @Inject constructor(
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
         messagesState.rawMessageMaps.putAll(
-            rawMessageRepository.fetchLatest(key.channelId, 5).map { Pair(it.id, it) }
+            rawMessageRepository.fetchLatest(key.channelId, 10).map { Pair(it.id, it) }
         )
     }
 
