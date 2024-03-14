@@ -144,24 +144,25 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             Row {
-                                var isPushOn by rememberSaveable { mutableStateOf(true) }
+                                val messagesState = remember { viewModel.messagesState }
+                                var isPushOn by rememberSaveable { mutableStateOf(messagesState.allowPush) }
 
                                 RowText(
                                     text = "Push: $isPushOn",
                                     modifier = Modifier
                                         .clickable {
                                             isPushOn = !isPushOn
-                                            viewModel.setIsPushAllowed(isPushOn)
+                                            viewModel.messagesState.allowPush = isPushOn
                                         }
                                 )
 
-                                var isAsyncOn by rememberSaveable { mutableStateOf(true) }
+                                var isAsyncOn by rememberSaveable { mutableStateOf(!messagesState.awaitInitialization) }
                                 RowText(
                                     text = "Async: $isAsyncOn",
                                     modifier = Modifier
                                         .clickable {
                                             isAsyncOn = !isAsyncOn
-                                            viewModel.setAwaitInitialization(!isAsyncOn)
+                                            viewModel.messagesState.awaitInitialization = !isAsyncOn
                                         }
                                 )
                             }

@@ -43,6 +43,8 @@ class MainViewModel @Inject constructor(
         .flattenConcat()
         .stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
+    val messagesState by lazy { messageRepository.getMessagesState(key) }
+
     init {
         initMessages()
     }
@@ -67,14 +69,6 @@ class MainViewModel @Inject constructor(
 
     fun dropMessages() {
         messageRepository.drop(key)
-    }
-
-    fun setIsPushAllowed(isPushAllowed: Boolean) {
-        messageRepository.getMessagesState(key).allowPush = isPushAllowed
-    }
-
-    fun setAwaitInitialization(awaitInitialization: Boolean) {
-        messageRepository.getMessagesState(key).awaitInitialization = awaitInitialization
     }
 
     override fun onCleared() {
