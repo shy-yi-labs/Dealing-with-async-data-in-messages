@@ -32,7 +32,7 @@ class RawMessageRepository(
     private val pushInterval: Long = 3000
 ) {
     private val mutex = Mutex()
-    private val rawMessages = MutableList(100) { it.toLong().toRawMessage(getRandomChannel()) }
+    private val rawMessages = MutableList(INITIAL_RAW_MESSAGES_COUNT) { it.toLong().toRawMessage(getRandomChannel()) }
 
     suspend fun fetchLatest(
         channelId: Long,
@@ -71,7 +71,7 @@ class RawMessageRepository(
 
     @OptIn(DelicateCoroutinesApi::class)
     val pushes = flow {
-        for(i in 100L .. (100 + pushCount)) {
+        for(i in INITIAL_RAW_MESSAGES_COUNT.toLong() .. (INITIAL_RAW_MESSAGES_COUNT + pushCount)) {
             delay(pushInterval)
             mutex.withLock {
                 val rawItem = i.toRawMessage(getRandomChannel())
@@ -82,4 +82,9 @@ class RawMessageRepository(
     }.shareIn(GlobalScope, SharingStarted.Eagerly)
 
     private fun getRandomChannel(): Long = (0L..3L).random()
+
+    companion object {
+
+        private const val INITIAL_RAW_MESSAGES_COUNT = 1000
+    }
 }
