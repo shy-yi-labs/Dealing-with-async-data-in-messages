@@ -180,9 +180,17 @@ fun MessageList(
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
 
-    val firstVisibleItemIndex by remember { derivedStateOf { lazyListState.firstVisibleItemIndex } }
+    val firstVisibleItemIndex by remember {
+        derivedStateOf {
+            try {
+                lazyListState.firstVisibleItemIndex
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
     if (firstVisibleItemIndex == 0) {
-        LaunchedEffect(messages.last()) {
+        LaunchedEffect(messages.lastOrNull()) {
             coroutineScope.launch {
                 lazyListState.animateScrollToItem(0)
             }
