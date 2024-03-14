@@ -207,7 +207,7 @@ fun MessageList(
                         .padding(4.dp)
                 ) {
                     val reaction by item.reaction.collectAsState(initial = null)
-                    val individualEmitValue by item.scrap.collectAsState(initial = null)
+                    val scrap by item.scrap.collectAsState(initial = null)
 
                     val context = LocalContext.current
 
@@ -238,7 +238,7 @@ fun MessageList(
                         }
                     )
                     RowText(
-                        text = individualEmitValue.toString(),
+                        text = scrap.toString(),
                         modifier = Modifier.recomposeHighlighter()
                     )
                 }
