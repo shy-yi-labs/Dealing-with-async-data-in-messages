@@ -27,8 +27,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +71,10 @@ class MainActivity : ComponentActivity() {
                             uiState.messages,
                             viewModel::triggerNewReactionEvent,
                             modifier = Modifier.weight(1f)
+                        )
+
+                        TextField(
+                            value = "", onValueChange = {}, modifier = Modifier.fillMaxWidth()
                         )
 
                         Column {
@@ -170,7 +177,17 @@ fun MessageList(
     onReactionClick: (ReactionEvent) -> Unit,
     modifier: Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+
+    val firstVisibleItemIndex by remember { derivedStateOf { lazyListState.firstVisibleItemIndex } }
+    if (firstVisibleItemIndex == 0) {
+        LaunchedEffect(messages.last()) {
+            coroutineScope.launch {
+                lazyListState.animateScrollToItem(0)
+            }
+        }
+    }
 
     Box(modifier = modifier) {
         LazyColumn(
@@ -230,11 +247,9 @@ fun MessageList(
         }
 
         AnimatedVisibility(
-            visible = lazyListState.canScrollBackward,
+            visible = lazyListState.canScrollBackward && lazyListState.isScrollInProgress.not(),
             modifier = Modifier.align(Alignment.BottomEnd)
         ) {
-            val coroutineScope = rememberCoroutineScope()
-
             Box(
                 modifier = Modifier
                     .padding(16.dp)
