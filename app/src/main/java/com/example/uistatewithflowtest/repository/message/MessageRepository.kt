@@ -37,7 +37,7 @@ class MessageRepository @Inject constructor(
     private val rawMessageRepository: RawMessageRepository,
 ) {
 
-    private data class MessagesKey(
+    data class Key(
         val channelId: Long,
         val extraKey: Long?,
     )
@@ -58,13 +58,9 @@ class MessageRepository @Inject constructor(
             .onEach { if (awaitInitialization) it.await() }
     }
 
-    private val messagesStateMap = mutableMapOf<MessagesKey, MessagesStateImpl>()
+    private val messagesStateMap = mutableMapOf<Key, MessagesStateImpl>()
 
-    suspend fun getMessages(
-        channelId: Long,
-        extraKey: Long? = null,
-    ): Flow<List<Message>> {
-        val key = MessagesKey(channelId, extraKey)
+    suspend fun getMessages(key: Key): Flow<List<Message>> {
         val messageState = messagesStateMap[key] ?: run {
             MessagesStateImpl().also {
                 it.init(key)
@@ -75,11 +71,11 @@ class MessageRepository @Inject constructor(
         return messageState.messages
     }
 
-    private suspend fun MessagesStateImpl.init(messagesKey: MessagesKey) {
+    private suspend fun MessagesStateImpl.init(key: Key) {
         pushJob = CoroutineScope(coroutineContext).launch {
             rawMessageRepository.pushes
                 .filter { allowPush }
-                .filter { it.channelId == messagesKey.channelId }
+                .filter { it.channelId == key.channelId }
                 .collect {
                     rawMessageMaps.put(it.id, it)
                 }
@@ -93,11 +89,7 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    suspend fun init(
-        channelId: Long,
-        extraKey: Long? = null
-    ) {
-        val key = MessagesKey(channelId, extraKey)
+    suspend fun init(key: Key) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
         messagesState.rawMessageMaps.putAll(
@@ -105,28 +97,25 @@ class MessageRepository @Inject constructor(
         )
     }
 
-    suspend fun clear(channelId: Long, extraKey: Long? = null) {
-        val key = MessagesKey(channelId, extraKey)
+    suspend fun clear(key: Key) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
         messagesState.rawMessageMaps.clear()
     }
 
-    fun drop(channelId: Long, extraKey: Long? = null) {
-        val key = MessagesKey(channelId, extraKey)
+    fun drop(key: Key) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
         messagesState.pushJob?.cancel()
         messagesStateMap.remove(key)
     }
 
-    fun getMessagesState(channelId: Long, extraKey: Long? = null): MessagesState {
-        val key = MessagesKey(channelId, extraKey)
+    fun getMessagesState(key: Key): MessagesState {
         return messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
     }
 
-    private fun getGetMessagesNotCalledException(key: MessagesKey): IllegalStateException {
+    private fun getGetMessagesNotCalledException(key: Key): IllegalStateException {
         return IllegalStateException("getMessages() must be called before calling this method for the given key: $key")
     }
 }

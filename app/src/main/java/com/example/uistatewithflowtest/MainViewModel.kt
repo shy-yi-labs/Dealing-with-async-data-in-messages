@@ -28,17 +28,15 @@ class MainViewModel @Inject constructor(
     private val manualReactionPushDataSource: ManualReactionPushDataSource,
 ) : ViewModel() {
 
-    private val channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L
-
-    private val extraKey = this.hashCode().toLong()
+    private val key = MessageRepository.Key(
+        channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L,
+        extraKey = this.hashCode().toLong()
+    )
 
     @OptIn(FlowPreview::class)
     val uiState = flow {
         val messages = messageRepository
-            .getMessages(
-                channelId = channelId,
-                extraKey = extraKey
-            )
+            .getMessages(key)
             .map { MainUiState(it) }
         emit(messages)
     }
@@ -57,29 +55,26 @@ class MainViewModel @Inject constructor(
 
     fun initMessages() {
         viewModelScope.launch {
-            messageRepository.init(
-                channelId = channelId,
-                extraKey = extraKey,
-            )
+            messageRepository.init(key)
         }
     }
 
     fun clearMessages() {
         viewModelScope.launch(NonCancellable) {
-            messageRepository.clear(channelId, extraKey)
+            messageRepository.clear(key)
         }
     }
 
     fun dropMessages() {
-        messageRepository.drop(channelId, extraKey)
+        messageRepository.drop(key)
     }
 
     fun setIsPushAllowed(isPushAllowed: Boolean) {
-        messageRepository.getMessagesState(channelId, extraKey).allowPush = isPushAllowed
+        messageRepository.getMessagesState(key).allowPush = isPushAllowed
     }
 
     fun setAwaitInitialization(awaitInitialization: Boolean) {
-        messageRepository.getMessagesState(channelId, extraKey).awaitInitialization = awaitInitialization
+        messageRepository.getMessagesState(key).awaitInitialization = awaitInitialization
     }
 
     override fun onCleared() {
