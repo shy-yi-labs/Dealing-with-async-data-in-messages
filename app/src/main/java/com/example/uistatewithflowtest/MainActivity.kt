@@ -7,8 +7,10 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.ui.theme.UiStateWithFlowTestTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -167,61 +172,81 @@ fun MessageList(
 ) {
     val lazyListState = rememberLazyListState()
 
-    LazyColumn(
-        state = lazyListState,
-        reverseLayout = true,
-        modifier = modifier
-    ) {
-        items(
-            messages.reversed(),
-            key = { it.id }
-        ) { item ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+    Box(modifier = modifier) {
+        LazyColumn(
+            state = lazyListState,
+            reverseLayout = true,
+        ) {
+            items(
+                messages.reversed(),
+                key = { it.id }
+            ) { item ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.LightGray)
+                        .padding(4.dp)
+                ) {
+                    val reaction by item.reaction.collectAsState(initial = null)
+                    val individualEmitValue by item.scrap.collectAsState(initial = null)
+
+                    val context = LocalContext.current
+
+                    RowText(
+                        text = item.channelId.toString(),
+                        modifier = Modifier.recomposeHighlighter()
+                    )
+                    RowText(
+                        text = item.staticValue,
+                        modifier = Modifier.recomposeHighlighter()
+                    )
+                    RowText(
+                        text = reaction.toString(),
+                        modifier = remember(onReactionClick) {
+                            Modifier
+                                .clickable {
+                                    val event = ReactionEvent.random(item.id)
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            "${event::class.simpleName}",
+                                            Toast.LENGTH_SHORT
+                                        )
+                                        .show()
+                                    onReactionClick(event)
+                                }
+                                .recomposeHighlighter()
+                        }
+                    )
+                    RowText(
+                        text = individualEmitValue.toString(),
+                        modifier = Modifier.recomposeHighlighter()
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = lazyListState.canScrollBackward,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        ) {
+            val coroutineScope = rememberCoroutineScope()
+
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(color = Color.DarkGray, shape = CircleShape)
                     .padding(8.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray)
-                    .padding(4.dp)
-            ) {
-                val reaction by item.reaction.collectAsState(initial = null)
-                val individualEmitValue by item.scrap.collectAsState(
-                    initial = null
-                )
-
-                val context = LocalContext.current
-
-                RowText(
-                    text = item.channelId.toString(),
-                    modifier = Modifier.recomposeHighlighter()
-                )
-                RowText(
-                    text = item.staticValue,
-                    modifier = Modifier.recomposeHighlighter()
-                )
-                RowText(
-                    text = reaction.toString(),
-                    modifier = remember(onReactionClick) {
-                        Modifier
-                            .clickable {
-                                val event = ReactionEvent.random(item.id)
-                                Toast
-                                    .makeText(
-                                        context,
-                                        "${event::class.simpleName}",
-                                        Toast.LENGTH_SHORT
-                                    )
-                                    .show()
-                                onReactionClick(event)
-                            }
-                            .recomposeHighlighter()
+                    .clickable {
+                        coroutineScope.launch {
+                            lazyListState.animateScrollToItem(0)
+                        }
                     }
-                )
-                RowText(
-                    text = individualEmitValue.toString(),
-                    modifier = Modifier.recomposeHighlighter()
-                )
+            ) {
+                Text(text = "👇")
             }
         }
     }
