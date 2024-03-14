@@ -23,6 +23,10 @@ private fun Long.toRawMessage(channelId: Long): RawMessage {
     )
 }
 
+enum class FetchType {
+    Older, Around, Newer
+}
+
 class RawMessageRepository(
     private val pushCount: Int = 10,
     private val pushInterval: Long = 3000
@@ -36,6 +40,32 @@ class RawMessageRepository(
     ): List<RawMessage> {
         return mutex.withLock {
             rawMessages.filter { it.channelId == channelId }.takeLast(count)
+        }
+    }
+
+    suspend fun fetch(
+        channelId: Long,
+        pivot: Long,
+        count: Int,
+        type: FetchType
+    ): List<RawMessage> {
+        return mutex.withLock {
+
+            val filteredMessages = rawMessages.filter { it.channelId == channelId }
+            val pivotIndex = filteredMessages.indexOfFirst { it.id == pivot }
+
+            if (pivotIndex < 0) return emptyList()
+
+            val (from, to) = when (type) {
+                FetchType.Older -> Pair(pivotIndex - count, pivotIndex)
+                FetchType.Around -> Pair(pivotIndex - count, pivotIndex + count)
+                FetchType.Newer -> Pair(pivotIndex, pivotIndex + count)
+            }
+
+            filteredMessages.subList(
+                fromIndex = from.coerceAtLeast(0),
+                toIndex = to.coerceAtMost(rawMessages.lastIndex)
+            )
         }
     }
 
