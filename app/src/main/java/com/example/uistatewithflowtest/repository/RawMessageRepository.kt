@@ -64,7 +64,7 @@ class RawMessageRepository(
 
             filteredMessages.subList(
                 fromIndex = from.coerceAtLeast(0),
-                toIndex = to.coerceAtMost(rawMessages.lastIndex)
+                toIndex = to.coerceAtMost(filteredMessages.lastIndex)
             )
         }
     }
