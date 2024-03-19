@@ -3,6 +3,7 @@ package com.example.uistatewithflowtest
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.uistatewithflowtest.repository.FetchType
 import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
 import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.repository.message.MessageRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 data class MainUiState(
@@ -45,6 +47,8 @@ class MainViewModel @Inject constructor(
 
     val messagesState by lazy { messageRepository.getMessagesState(key) }
 
+    private val isFetchInProgress = AtomicBoolean(false)
+
     init {
         initMessages()
     }
@@ -57,7 +61,21 @@ class MainViewModel @Inject constructor(
 
     fun initMessages() {
         viewModelScope.launch {
-            messageRepository.init(key)
+            messageRepository.init(key, MESSAGE_FETCH_COUNT_UNIT)
+        }
+    }
+
+    fun fetch(pivot: Long, type: FetchType) {
+        viewModelScope.launch {
+            if(isFetchInProgress.compareAndSet(false, true)) {
+                messageRepository.fetch(
+                    key = key,
+                    pivot = pivot,
+                    count = MESSAGE_FETCH_COUNT_UNIT,
+                    type = type
+                )
+                isFetchInProgress.set(false)
+            }
         }
     }
 
@@ -79,5 +97,7 @@ class MainViewModel @Inject constructor(
 
     companion object {
         const val ARG_CHANNEL_ID = "argChannelId"
+
+        private val MESSAGE_FETCH_COUNT_UNIT = 20
     }
 }

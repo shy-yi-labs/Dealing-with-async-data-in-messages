@@ -2,6 +2,7 @@ package com.example.uistatewithflowtest.repository.message
 
 import com.example.uistatewithflowtest.OrderedMapFlow
 import com.example.uistatewithflowtest.Reaction
+import com.example.uistatewithflowtest.repository.FetchType
 import com.example.uistatewithflowtest.repository.RawMessage
 import com.example.uistatewithflowtest.repository.RawMessageRepository
 import com.example.uistatewithflowtest.repository.Scrap
@@ -89,11 +90,24 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    suspend fun init(key: Key) {
+    suspend fun init(key: Key, count: Int) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
         messagesState.rawMessageMaps.putAll(
-            rawMessageRepository.fetchLatest(key.channelId, 10).map { Pair(it.id, it) }
+            rawMessageRepository.fetchLatest(key.channelId, count).map { Pair(it.id, it) }
+        )
+    }
+
+    suspend fun fetch(
+        key: Key,
+        pivot: Long,
+        count: Int,
+        type: FetchType
+    ) {
+        val messagesState = messagesStateMap[key]
+            ?: throw getGetMessagesNotCalledException(key)
+        messagesState.rawMessageMaps.putAll(
+            rawMessageRepository.fetch(key.channelId, pivot, count, type).map { Pair(it.id, it) }
         )
     }
 

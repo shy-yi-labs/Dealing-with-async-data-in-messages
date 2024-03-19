@@ -34,8 +34,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,9 +45,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.uistatewithflowtest.repository.FetchType
 import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.ui.theme.UiStateWithFlowTestTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -68,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         MessageList(
                             uiState.messages,
                             viewModel::triggerNewReactionEvent,
+                            viewModel::fetch,
                             modifier = Modifier.weight(1f)
                         )
 
@@ -166,10 +172,13 @@ class MainActivity : ComponentActivity() {
 fun MessageList(
     messages: List<Message>,
     onReactionClick: (ReactionEvent) -> Unit,
+    onFetch: (Long, FetchType) -> Unit,
     modifier: Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+
+    val reversedMessages by rememberUpdatedState(messages.reversed())
 
     val firstVisibleItemIndex by remember {
         derivedStateOf {
@@ -180,6 +189,7 @@ fun MessageList(
             }
         }
     }
+
     if (firstVisibleItemIndex == 0) {
         LaunchedEffect(messages.lastOrNull()) {
             coroutineScope.launch {
@@ -188,13 +198,33 @@ fun MessageList(
         }
     }
 
+    LaunchedEffect(lazyListState) {
+        snapshotFlow { lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .map { it ?: -1 }
+            .collectLatest {
+                if (it != -1 && it == reversedMessages.lastIndex) {
+                    onFetch(reversedMessages[it].id, FetchType.Older)
+                }
+            }
+    }
+
+    LaunchedEffect(lazyListState) {
+        snapshotFlow { lazyListState.layoutInfo.visibleItemsInfo.firstOrNull()?.index }
+            .map { it ?: -1 }
+            .collectLatest {
+                if (it != -1 && it == 0) {
+                    onFetch(reversedMessages[it].id, FetchType.Newer)
+                }
+            }
+    }
+
     Box(modifier = modifier) {
         LazyColumn(
             state = lazyListState,
             reverseLayout = true,
         ) {
             items(
-                messages.reversed(),
+                reversedMessages,
                 key = { it.id }
             ) { item ->
                 Row(
