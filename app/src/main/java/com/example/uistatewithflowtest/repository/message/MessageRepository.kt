@@ -1,5 +1,6 @@
 package com.example.uistatewithflowtest.repository.message
 
+import android.util.Log
 import com.example.uistatewithflowtest.OrderedMapFlow
 import com.example.uistatewithflowtest.Reaction
 import com.example.uistatewithflowtest.repository.FetchType
@@ -19,16 +20,28 @@ import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
 data class Message(
-    val id: Long,
-    val channelId: Long,
-    val content: Long,
-    val staticValue: String,
+    val id: Id,
+    val text: String,
     val reaction: Flow<Reaction?>,
     val scrap: Flow<Scrap?>
-)
+) {
+
+    data class Id(
+        val channelId: Long,
+        val messageId: Long
+    ): Comparable<Id> {
+        override fun compareTo(other: Id): Int {
+            val channelIdComparison = this.channelId.compareTo(other.channelId)
+            return if (channelIdComparison != 0) {
+                channelIdComparison
+            } else {
+                this.messageId.compareTo(other.messageId)
+            }
+        }
+    }
+}
 
 interface MessagesState {
-    var allowPush: Boolean
     var awaitInitialization: Boolean
 }
 
@@ -45,9 +58,8 @@ class MessageRepository @Inject constructor(
 
     private inner class MessagesStateImpl: MessagesState {
         var pushJob: Job? = null
-        override var allowPush: Boolean = true
         override var awaitInitialization: Boolean = false
-        val rawMessageMaps: OrderedMapFlow<Long, RawMessage> = OrderedMapFlow()
+        val rawMessageMaps: OrderedMapFlow<Message.Id, RawMessage> = OrderedMapFlow()
 
         val messages = rawMessageMaps
             .map { it.values }
@@ -75,10 +87,16 @@ class MessageRepository @Inject constructor(
     private suspend fun MessagesStateImpl.init(key: Key) {
         pushJob = CoroutineScope(coroutineContext).launch {
             rawMessageRepository.pushes
-                .filter { allowPush }
-                .filter { it.channelId == key.channelId }
-                .collect {
-                    rawMessageMaps.put(it.id, it)
+                .filter { it.id.channelId == key.channelId }
+                .collect { new ->
+                    Log.d("MessageRepository", new.toString())
+                    val old = rawMessageMaps[new.id]
+
+                    if (old == null || old.updateAt < new.updateAt) {
+                        rawMessageMaps.put(new.id, new)
+                    } else {
+                        Log.d("MessageRepository", "Reject! $old rejected $new")
+                    }
                 }
         }
     }

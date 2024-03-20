@@ -1,26 +1,34 @@
 package com.example.uistatewithflowtest.repository
 
+import com.example.uistatewithflowtest.repository.message.Message
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.TreeMap
+import kotlin.coroutines.coroutineContext
 
-data class RawMessage(
-    val id: Long,
-    val channelId: Long,
-    val value: String
-)
+sealed interface RawMessage {
+    val id: Message.Id
+    val updateAt: Long
+    data class Normal(
+        override val id: Message.Id,
+        override val updateAt: Long = System.currentTimeMillis(),
+        val text: String = "${id.messageId}!"
+    ): RawMessage
 
-private fun Long.toRawMessage(channelId: Long): RawMessage {
-    return RawMessage(
-        this,
-        channelId,
-        "$this!"
-    )
+    data class Deleted(
+        override val id: Message.Id,
+        override val updateAt: Long = System.currentTimeMillis(),
+    ): RawMessage
 }
 
 enum class FetchType {
@@ -32,14 +40,27 @@ class RawMessageRepository(
     private val pushInterval: Long = 3000
 ) {
     private val mutex = Mutex()
-    private val rawMessages = MutableList(INITIAL_RAW_MESSAGES_COUNT) { it.toLong().toRawMessage(getRandomChannel()) }
+    private val rawMessages = TreeMap<Message.Id, RawMessage>()
+
+    init {
+        List(INITIAL_RAW_MESSAGES_COUNT) {
+            RawMessage.Normal(
+                Message.Id(
+                    channelId = getRandomChannel(),
+                    messageId = it.toLong()
+                )
+            )
+        }.forEach {
+            rawMessages[it.id] = it
+        }
+    }
 
     suspend fun fetchLatest(
         channelId: Long,
         count: Int
     ): List<RawMessage> {
         return mutex.withLock {
-            rawMessages.filter { it.channelId == channelId }.takeLast(count)
+            rawMessages.values.filter { it.id.channelId == channelId }.takeLast(count)
         }
     }
 
@@ -51,8 +72,8 @@ class RawMessageRepository(
     ): List<RawMessage> {
         return mutex.withLock {
 
-            val filteredMessages = rawMessages.filter { it.channelId == channelId }
-            val pivotIndex = filteredMessages.indexOfFirst { it.id == pivot }
+            val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
+            val pivotIndex = filteredMessages.indexOfFirst { it.id.messageId == pivot }
 
             if (pivotIndex < 0) return emptyList()
 
@@ -74,12 +95,41 @@ class RawMessageRepository(
         for(i in INITIAL_RAW_MESSAGES_COUNT.toLong() .. (INITIAL_RAW_MESSAGES_COUNT + pushCount)) {
             delay(pushInterval)
             mutex.withLock {
-                val rawItem = i.toRawMessage(getRandomChannel())
-                rawMessages.add(rawItem)
-                emit(rawItem)
+                val channelId = getRandomChannel()
+
+                val new = if ((0 until 2).random() == 0) {
+                    val idsOfLast10Messages = rawMessages.values
+                        .filter { it.id.channelId == channelId }
+                        .filterIsInstance<RawMessage.Normal>()
+                        .takeLast(2).map { it.id }
+                    val id = idsOfLast10Messages.random()
+                    RawMessage.Deleted(id)
+                } else {
+                    val newId = Message.Id(channelId = channelId, messageId = i)
+                    RawMessage.Normal(newId)
+                }
+
+                rawMessages[new.id] = new
+                emit(new)
             }
         }
-    }.shareIn(GlobalScope, SharingStarted.Eagerly)
+    }.lag(3000).shareIn(GlobalScope, SharingStarted.Eagerly)
+
+    private fun <T> Flow<T>.lag(delay: Long): Flow<T> {
+        return object : Flow<T> {
+
+            override suspend fun collect(collector: FlowCollector<T>) {
+                val scope = CoroutineScope(coroutineContext)
+                this@lag.collect() {
+                    scope.launch {
+                        if ((0..1).random() == 0) delay(delay)
+                        collector.emit(it)
+                    }
+                }
+            }
+
+        }
+    }
 
     private fun getRandomChannel(): Long = (0L..3L).random()
 

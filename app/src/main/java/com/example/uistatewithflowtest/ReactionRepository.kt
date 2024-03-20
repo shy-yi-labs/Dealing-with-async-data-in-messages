@@ -2,6 +2,7 @@ package com.example.uistatewithflowtest
 
 import com.example.uistatewithflowtest.repository.ReactionPullDataSource
 import com.example.uistatewithflowtest.repository.ReactionPushDataSource
+import com.example.uistatewithflowtest.repository.message.Message
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -26,16 +27,16 @@ data class Reaction(val value: Int) {
 }
 
 sealed class ReactionEvent {
-    abstract val targetId: Long
+    abstract val targetId: Message.Id
 
-    data class Insert(override val targetId: Long, val reaction: Reaction): ReactionEvent()
-    data class Update(override val targetId: Long, val reaction: Reaction): ReactionEvent()
-    data class Delete(override val targetId: Long): ReactionEvent()
+    data class Insert(override val targetId: Message.Id, val reaction: Reaction): ReactionEvent()
+    data class Update(override val targetId: Message.Id, val reaction: Reaction): ReactionEvent()
+    data class Delete(override val targetId: Message.Id): ReactionEvent()
 
     companion object {
 
-        fun random(targetId: Long): ReactionEvent {
-            val eventProviders = listOf<(Long) -> ReactionEvent>(
+        fun random(targetId: Message.Id): ReactionEvent {
+            val eventProviders = listOf<(Message.Id) -> ReactionEvent>(
                 { Insert(targetId, Reaction.random()) },
                 { Update(targetId, Reaction.random()) },
                 { Delete(targetId) },
@@ -51,11 +52,11 @@ class ReactionRepository @Inject constructor(
     private val reactionPullDataSource: ReactionPullDataSource,
     private val reactionPushDataSource: ReactionPushDataSource,
 ) {
-    private val mapFlow = OrderedMapFlow<Long, Reaction?>()
+    private val mapFlow = OrderedMapFlow<Message.Id, Reaction?>()
 
     private var pushCollectJob: Job? = null
 
-    suspend fun get(id: Long): Flow<Reaction?> {
+    suspend fun get(id: Message.Id): Flow<Reaction?> {
         pushCollectJob ?: run {
             pushCollectJob = CoroutineScope(coroutineContext).launch {
                 collectPushes()
@@ -81,7 +82,7 @@ class ReactionRepository @Inject constructor(
         }
     }
 
-    suspend fun fetch(ids: List<Long>) {
+    suspend fun fetch(ids: List<Message.Id>) {
         CoroutineScope(coroutineContext).launch {
             val pairs = reactionPullDataSource
                 .get(ids)

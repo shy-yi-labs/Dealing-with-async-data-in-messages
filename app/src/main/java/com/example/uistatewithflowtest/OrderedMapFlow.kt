@@ -7,10 +7,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.TreeMap
 
-class OrderedMapFlow<K, V>: Flow<Map<K, V>> {
+class OrderedMapFlow<K, V>(
+    private val treeMap: TreeMap<K, V> = TreeMap()
+) : Flow<Map<K, V>>,
+    Map<K, V> by treeMap {
 
     private val mutex = Mutex()
-    private val treeMap = TreeMap<K, V>()
     private val sharedFlow = MutableSharedFlow<TreeMap<K, V>>(replay = 1)
 
     suspend fun put(key: K, value: V) {

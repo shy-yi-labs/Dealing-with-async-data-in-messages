@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -130,16 +131,6 @@ class MainActivity : ComponentActivity() {
                             }
                             Row {
                                 val messagesState = remember { viewModel.messagesState }
-                                var isPushOn by rememberSaveable { mutableStateOf(messagesState.allowPush) }
-
-                                RowText(
-                                    text = "Push: $isPushOn",
-                                    modifier = Modifier
-                                        .clickable {
-                                            isPushOn = !isPushOn
-                                            viewModel.messagesState.allowPush = isPushOn
-                                        }
-                                )
 
                                 var isAsyncOn by rememberSaveable { mutableStateOf(!messagesState.awaitInitialization) }
                                 RowText(
@@ -168,6 +159,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageList(
     messages: List<Message>,
@@ -203,7 +195,7 @@ fun MessageList(
             .map { it ?: -1 }
             .collectLatest {
                 if (it != -1 && it == reversedMessages.lastIndex) {
-                    onFetch(reversedMessages[it].id, FetchType.Older)
+                    onFetch(reversedMessages[it].id.messageId, FetchType.Older)
                 }
             }
     }
@@ -213,7 +205,7 @@ fun MessageList(
             .map { it ?: -1 }
             .collectLatest {
                 if (it != -1 && it == 0) {
-                    onFetch(reversedMessages[it].id, FetchType.Newer)
+                    onFetch(reversedMessages[it].id.messageId, FetchType.Newer)
                 }
             }
     }
@@ -225,7 +217,7 @@ fun MessageList(
         ) {
             items(
                 reversedMessages,
-                key = { it.id }
+                key = { it.id.messageId }
             ) { item ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -235,6 +227,7 @@ fun MessageList(
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.LightGray)
                         .padding(4.dp)
+                        .animateItemPlacement()
                 ) {
                     val reaction by item.reaction.collectAsState(initial = null)
                     val scrap by item.scrap.collectAsState(initial = null)
@@ -242,11 +235,11 @@ fun MessageList(
                     val context = LocalContext.current
 
                     RowText(
-                        text = item.channelId.toString(),
+                        text = item.id.channelId.toString(),
                         modifier = Modifier.recomposeHighlighter()
                     )
                     RowText(
-                        text = item.staticValue,
+                        text = item.text,
                         modifier = Modifier.recomposeHighlighter()
                     )
                     RowText(

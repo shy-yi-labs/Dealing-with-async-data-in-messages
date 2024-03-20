@@ -14,7 +14,7 @@ class MessageFactory @Inject constructor(
     private val reactionRepository: ReactionRepository,
     private val scrapRepository: ScrapRepository
 ) {
-    private val messageCacheStore = mutableMapOf<Long, Pair<RawMessage, Message>>()
+    private val messageCacheStore = mutableMapOf<Message.Id, Pair<RawMessage, Message>>()
 
     suspend fun Collection<RawMessage>.toMessages(): List<Message> {
         val rawMessagesNotInCache = this.filter { rawMessage ->
@@ -26,22 +26,28 @@ class MessageFactory @Inject constructor(
         reactionRepository.fetch(rawMessagesNotInCache.map { it.id })
 
         rawMessagesNotInCache.forEach {
-            messageCacheStore[it.id] = it to it.toItem()
+            val newItem = it.toItem()
+            if (newItem == null) {
+                messageCacheStore.remove(it.id)
+            } else {
+                messageCacheStore[it.id] = it to newItem
+            }
         }
 
-        return this.map { messageCacheStore[it.id]!!.second }
+        return this.mapNotNull { messageCacheStore[it.id]?.second }
     }
 
-    private suspend fun RawMessage.toItem(): Message {
-        return Message(
-            id = id,
-            channelId = channelId,
-            content = id,
-            staticValue = value,
-            reaction = reactionRepository.get(id),
-            scrap = flow {
-                emit(scrapRepository.get(id))
-            }.shareIn(CoroutineScope(coroutineContext), SharingStarted.Eagerly, 1)
-        )
+    private suspend fun RawMessage.toItem(): Message? {
+        return when(this) {
+            is RawMessage.Deleted -> null
+            is RawMessage.Normal -> Message(
+                id = id,
+                text = text,
+                reaction = reactionRepository.get(id),
+                scrap = flow {
+                    emit(scrapRepository.get(id))
+                }.shareIn(CoroutineScope(coroutineContext), SharingStarted.Eagerly, 1)
+            )
+        }
     }
 }
