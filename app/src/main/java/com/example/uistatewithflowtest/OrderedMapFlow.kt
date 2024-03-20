@@ -8,7 +8,8 @@ import kotlinx.coroutines.sync.withLock
 import java.util.TreeMap
 
 class OrderedMapFlow<K, V>(
-    private val treeMap: TreeMap<K, V> = TreeMap()
+    private val treeMap: TreeMap<K, V> = TreeMap(),
+    val onKeyExists: (V, V) -> Boolean = { _, _ -> true }
 ) : Flow<Map<K, V>>,
     Map<K, V> by treeMap {
 
@@ -17,6 +18,10 @@ class OrderedMapFlow<K, V>(
 
     suspend fun put(key: K, value: V) {
         mutex.withLock {
+            val old = treeMap[key]
+
+            if (old != null && !onKeyExists(old, value)) return
+
             treeMap[key] = value
             sharedFlow.emit(treeMap)
         }
@@ -24,7 +29,13 @@ class OrderedMapFlow<K, V>(
 
     suspend fun putAll(pairs: List<Pair<K, V>>) {
         mutex.withLock {
-            treeMap.putAll(pairs)
+            pairs.forEach { (key, value) ->
+                val old = treeMap[key]
+
+                if (old != null && !onKeyExists(old, value)) return@forEach
+
+                treeMap[key] = value
+            }
             sharedFlow.emit(treeMap)
         }
     }

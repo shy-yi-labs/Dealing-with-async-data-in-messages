@@ -59,7 +59,15 @@ class MessageRepository @Inject constructor(
     private inner class MessagesStateImpl: MessagesState {
         var pushJob: Job? = null
         override var awaitInitialization: Boolean = false
-        val rawMessageMaps: OrderedMapFlow<Message.Id, RawMessage> = OrderedMapFlow()
+        val rawMessageMaps: OrderedMapFlow<Message.Id, RawMessage> = OrderedMapFlow { old, new ->
+            Log.d("MessageRepository", new.toString())
+            if (old.updateAt < new.updateAt) {
+                true
+            } else {
+                Log.d("MessageRepository", "Reject! $old rejected $new")
+                false
+            }
+        }
 
         val messages = rawMessageMaps
             .map { it.values }
@@ -88,16 +96,7 @@ class MessageRepository @Inject constructor(
         pushJob = CoroutineScope(coroutineContext).launch {
             rawMessageRepository.pushes
                 .filter { it.id.channelId == key.channelId }
-                .collect { new ->
-                    Log.d("MessageRepository", new.toString())
-                    val old = rawMessageMaps[new.id]
-
-                    if (old == null || old.updateAt < new.updateAt) {
-                        rawMessageMaps.put(new.id, new)
-                    } else {
-                        Log.d("MessageRepository", "Reject! $old rejected $new")
-                    }
-                }
+                .collect { rawMessageMaps.put(it.id, it) }
         }
     }
 
