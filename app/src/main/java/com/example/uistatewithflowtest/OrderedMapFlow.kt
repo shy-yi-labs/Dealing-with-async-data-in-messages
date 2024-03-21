@@ -15,6 +15,8 @@ class OrderedMapFlow<K, V>(
     private val mutex = Mutex()
     private val sharedFlow = MutableSharedFlow<TreeMap<K, V>>(replay = 1)
 
+    val map: Map<K, V> = _treeMap
+
     suspend fun put(key: K, value: V) {
         mutex.withLock {
             val old = _treeMap[key]

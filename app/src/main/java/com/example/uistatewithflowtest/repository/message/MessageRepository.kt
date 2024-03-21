@@ -1,10 +1,7 @@
 package com.example.uistatewithflowtest.repository.message
 
-import android.util.Log
-import com.example.uistatewithflowtest.OrderedMapFlow
 import com.example.uistatewithflowtest.Reaction
 import com.example.uistatewithflowtest.repository.FetchType
-import com.example.uistatewithflowtest.repository.RawMessage
 import com.example.uistatewithflowtest.repository.RawMessageRepository
 import com.example.uistatewithflowtest.repository.Scrap
 import kotlinx.coroutines.CoroutineScope
@@ -59,18 +56,9 @@ class MessageRepository @Inject constructor(
     private inner class MessagesStateImpl: MessagesState {
         var pushJob: Job? = null
         override var awaitInitialization: Boolean = false
-        val rawMessageMaps: OrderedMapFlow<Message.Id, RawMessage> = OrderedMapFlow { old, new ->
-            Log.d("MessageRepository", new.toString())
-            if (old.updateAt < new.updateAt) {
-                true
-            } else {
-                Log.d("MessageRepository", "Reject! $old rejected $new")
-                false
-            }
-        }
+        val pageManager = PageManager()
 
-        val messages = rawMessageMaps
-            .map { it.values }
+        val messages = pageManager.rawMessages
             .map { rawMessages ->
                 with(messageFactory) {
                     rawMessages.toMessages()
@@ -96,7 +84,7 @@ class MessageRepository @Inject constructor(
         pushJob = CoroutineScope(coroutineContext).launch {
             rawMessageRepository.pushes
                 .filter { it.id.channelId == key.channelId }
-                .collect { rawMessageMaps.put(it.id, it) }
+                .collect { pageManager.push(it) }
         }
     }
 
@@ -110,16 +98,13 @@ class MessageRepository @Inject constructor(
     suspend fun init(key: Key, count: Int, around: Long?) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        if (around == null) {
-            messagesState.rawMessageMaps.putAll(
-                rawMessageRepository.fetchLatest(key.channelId, count).messages.map { Pair(it.id, it) }
-            )
+        val page = if (around == null) {
+            rawMessageRepository.fetchLatest(key.channelId, count)
         } else {
-            messagesState.rawMessageMaps.putAll(
-                rawMessageRepository.fetch(key.channelId, around, count, FetchType.Around).messages.map { Pair(it.id, it) }
-            )
+            rawMessageRepository.fetch(key.channelId, around, count, FetchType.Around)
         }
 
+        messagesState.pageManager.put(page)
     }
 
     suspend fun fetch(
@@ -130,15 +115,15 @@ class MessageRepository @Inject constructor(
     ) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        messagesState.rawMessageMaps.putAll(
-            rawMessageRepository.fetch(key.channelId, pivot, count, type).messages.map { Pair(it.id, it) }
+        messagesState.pageManager.put(
+            rawMessageRepository.fetch(key.channelId, pivot, count, type)
         )
     }
 
     suspend fun clear(key: Key) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        messagesState.rawMessageMaps.clear()
+        messagesState.pageManager.clear()
     }
 
     fun drop(key: Key) {
