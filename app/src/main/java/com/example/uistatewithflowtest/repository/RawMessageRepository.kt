@@ -79,8 +79,8 @@ class RawMessageRepository(
 
             val (from, to) = when (type) {
                 FetchType.Older -> Pair(pivotIndex - count, pivotIndex)
-                FetchType.Around -> Pair(pivotIndex - count, pivotIndex + count)
-                FetchType.Newer -> Pair(pivotIndex, pivotIndex + count)
+                FetchType.Around -> Pair(pivotIndex - (count / 2), pivotIndex + (count / 2))
+                FetchType.Newer -> Pair(pivotIndex + 1, pivotIndex + 1 + count)
             }
 
             filteredMessages.subList(
