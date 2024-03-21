@@ -112,11 +112,11 @@ class MessageRepository @Inject constructor(
             ?: throw getGetMessagesNotCalledException(key)
         if (around == null) {
             messagesState.rawMessageMaps.putAll(
-                rawMessageRepository.fetchLatest(key.channelId, count).map { Pair(it.id, it) }
+                rawMessageRepository.fetchLatest(key.channelId, count).messages.map { Pair(it.id, it) }
             )
         } else {
             messagesState.rawMessageMaps.putAll(
-                rawMessageRepository.fetch(key.channelId, around, count, FetchType.Around).map { Pair(it.id, it) }
+                rawMessageRepository.fetch(key.channelId, around, count, FetchType.Around).messages.map { Pair(it.id, it) }
             )
         }
 
@@ -131,7 +131,7 @@ class MessageRepository @Inject constructor(
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
         messagesState.rawMessageMaps.putAll(
-            rawMessageRepository.fetch(key.channelId, pivot, count, type).map { Pair(it.id, it) }
+            rawMessageRepository.fetch(key.channelId, pivot, count, type).messages.map { Pair(it.id, it) }
         )
     }
 

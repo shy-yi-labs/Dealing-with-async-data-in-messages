@@ -35,6 +35,11 @@ enum class FetchType {
     Older, Around, Newer
 }
 
+data class Page(
+    val messages: List<RawMessage>,
+    val lastMessageId: Long?
+)
+
 class RawMessageRepository(
     private val pushCount: Int = 10,
     private val pushInterval: Long = 3000
@@ -58,9 +63,13 @@ class RawMessageRepository(
     suspend fun fetchLatest(
         channelId: Long,
         count: Int
-    ): List<RawMessage> {
+    ): Page {
         return mutex.withLock {
-            rawMessages.values.filter { it.id.channelId == channelId }.takeLast(count)
+            val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
+            Page(
+                filteredMessages.takeLast(count),
+                filteredMessages.last().id.messageId
+            )
         }
     }
 
@@ -69,23 +78,30 @@ class RawMessageRepository(
         pivot: Long,
         count: Int,
         type: FetchType
-    ): List<RawMessage> {
+    ): Page {
         return mutex.withLock {
 
             val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
             val pivotIndex = filteredMessages.indexOfFirst { it.id.messageId == pivot }
 
-            if (pivotIndex < 0) return emptyList()
+            val messages = if (pivotIndex < 0) {
+                emptyList()
+            } else {
+                val (from, to) = when (type) {
+                    FetchType.Older -> Pair(pivotIndex - count, pivotIndex)
+                    FetchType.Around -> Pair(pivotIndex - (count / 2), pivotIndex + (count / 2))
+                    FetchType.Newer -> Pair(pivotIndex + 1, pivotIndex + 1 + count)
+                }
 
-            val (from, to) = when (type) {
-                FetchType.Older -> Pair(pivotIndex - count, pivotIndex)
-                FetchType.Around -> Pair(pivotIndex - (count / 2), pivotIndex + (count / 2))
-                FetchType.Newer -> Pair(pivotIndex + 1, pivotIndex + 1 + count)
+                filteredMessages.subList(
+                    fromIndex = from.coerceIn(0, filteredMessages.lastIndex),
+                    toIndex = to.coerceIn(0, filteredMessages.lastIndex)
+                )
             }
 
-            filteredMessages.subList(
-                fromIndex = from.coerceAtLeast(0),
-                toIndex = to.coerceAtMost(filteredMessages.lastIndex)
+            Page(
+                messages,
+                filteredMessages.last().id.messageId
             )
         }
     }
