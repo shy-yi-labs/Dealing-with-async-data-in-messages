@@ -44,7 +44,11 @@ class MainViewModel @Inject constructor(
     private val isFetchInProgress = AtomicBoolean(false)
 
     init {
-        initMessages()
+        if (around == null) {
+            fetchLatest()
+        } else {
+            fetch(around, FetchType.Around)
+        }
     }
 
     fun triggerNewReactionEvent(reactionEvent: ReactionEvent) {
@@ -53,9 +57,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun initMessages() {
+    fun fetchLatest() {
         viewModelScope.launch {
-            messageRepository.init(key, MESSAGE_FETCH_COUNT_UNIT, around)
+            messageRepository.fetchLatest(key, MESSAGE_FETCH_COUNT_UNIT)
         }
     }
 

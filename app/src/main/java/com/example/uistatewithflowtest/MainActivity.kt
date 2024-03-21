@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
                                     text = "Init",
                                     modifier = Modifier
                                         .clickable {
-                                            viewModel.initMessages()
+                                            viewModel.fetchLatest()
                                         }
                                 )
                                 RowText(

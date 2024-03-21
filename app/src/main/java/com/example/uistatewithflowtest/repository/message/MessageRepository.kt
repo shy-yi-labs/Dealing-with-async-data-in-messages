@@ -98,16 +98,13 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    suspend fun init(key: Key, count: Int, around: Long?) {
+    suspend fun fetchLatest(key: Key, count: Int) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
-        val page = if (around == null) {
-            rawMessageRepository.fetchLatest(key.channelId, count)
-        } else {
-            rawMessageRepository.fetch(key.channelId, around, count, FetchType.Around)
-        }
 
-        messagesState.pageManager.put(page)
+        messagesState.pageManager.put(
+            rawMessageRepository.fetchLatest(key.channelId, count)
+        )
     }
 
     suspend fun fetch(
@@ -118,6 +115,7 @@ class MessageRepository @Inject constructor(
     ) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
+
         messagesState.pageManager.put(
             rawMessageRepository.fetch(key.channelId, pivot, count, type)
         )
@@ -126,12 +124,14 @@ class MessageRepository @Inject constructor(
     suspend fun clear(key: Key) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
+
         messagesState.pageManager.clear()
     }
 
     fun drop(key: Key) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
+
         messagesState.pushJob?.cancel()
         messagesStateMap.remove(key)
     }
