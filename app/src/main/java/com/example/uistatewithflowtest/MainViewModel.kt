@@ -8,11 +8,8 @@ import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
 import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.repository.message.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.flattenConcat
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -37,14 +34,9 @@ class MainViewModel @Inject constructor(
         extraKey = this.hashCode().toLong()
     )
 
-    @OptIn(FlowPreview::class)
-    val uiState = flow {
-        val messages = messageRepository
-            .getMessages(key)
-            .map { MainUiState(it) }
-        emit(messages)
-    }
-        .flattenConcat()
+    val uiState = messageRepository
+        .getMessages(key)
+        .map { MainUiState(it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     val messagesState by lazy { messageRepository.getMessagesState(key) }
@@ -69,7 +61,7 @@ class MainViewModel @Inject constructor(
 
     fun fetch(pivot: Long, type: FetchType) {
         viewModelScope.launch {
-            if(isFetchInProgress.compareAndSet(false, true)) {
+            if (isFetchInProgress.compareAndSet(false, true)) {
                 messageRepository.fetch(
                     key = key,
                     pivot = pivot,

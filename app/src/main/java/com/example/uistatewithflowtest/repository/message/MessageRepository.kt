@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -69,15 +70,17 @@ class MessageRepository @Inject constructor(
 
     private val messagesStateMap = mutableMapOf<Key, MessagesStateImpl>()
 
-    suspend fun getMessages(key: Key): Flow<List<Message>> {
-        val messageState = messagesStateMap[key] ?: run {
-            MessagesStateImpl().also {
-                it.init(key)
-                messagesStateMap[key] = it
+    fun getMessages(key: Key): Flow<List<Message>> {
+        return flow {
+            val messageState = messagesStateMap[key] ?: run {
+                MessagesStateImpl().also {
+                    it.init(key)
+                    messagesStateMap[key] = it
+                }
             }
-        }
 
-        return messageState.messages
+            messageState.messages.collect(this)
+        }
     }
 
     private suspend fun MessagesStateImpl.init(key: Key) {
