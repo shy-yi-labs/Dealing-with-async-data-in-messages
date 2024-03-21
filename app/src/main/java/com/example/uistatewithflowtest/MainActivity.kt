@@ -101,7 +101,15 @@ class MainActivity : ComponentActivity() {
                                         text = "Channel $i",
                                         modifier = Modifier
                                             .clickable {
-                                                startActivity(Companion.getIntent(context, i))
+                                                val around = uiState.messages.random().id.messageId
+                                                startActivity(getIntent(context, i, around))
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "Around: $around ",
+                                                        Toast.LENGTH_SHORT
+                                                    )
+                                                    .show()
                                             }
                                     )
                                 }
@@ -151,9 +159,10 @@ class MainActivity : ComponentActivity() {
 
     companion object {
 
-        fun getIntent(context: Context, channelId: Long): Intent {
+        fun getIntent(context: Context, channelId: Long, around: Long?): Intent {
             return Intent(context, MainActivity::class.java).apply {
                 putExtra(MainViewModel.ARG_CHANNEL_ID, channelId)
+                putExtra(MainViewModel.ARG_AROUND, around)
             }
         }
     }

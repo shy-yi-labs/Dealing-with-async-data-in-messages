@@ -30,6 +30,8 @@ class MainViewModel @Inject constructor(
     private val manualReactionPushDataSource: ManualReactionPushDataSource,
 ) : ViewModel() {
 
+    private val around = savedStateHandle.get<Long>(ARG_AROUND)
+
     private val key = MessageRepository.Key(
         channelId = savedStateHandle.get<Long>(ARG_CHANNEL_ID) ?: 0L,
         extraKey = this.hashCode().toLong()
@@ -61,7 +63,7 @@ class MainViewModel @Inject constructor(
 
     fun initMessages() {
         viewModelScope.launch {
-            messageRepository.init(key, MESSAGE_FETCH_COUNT_UNIT)
+            messageRepository.init(key, MESSAGE_FETCH_COUNT_UNIT, around)
         }
     }
 
@@ -97,6 +99,7 @@ class MainViewModel @Inject constructor(
 
     companion object {
         const val ARG_CHANNEL_ID = "argChannelId"
+        const val ARG_AROUND = "argAround"
 
         private val MESSAGE_FETCH_COUNT_UNIT = 20
     }
