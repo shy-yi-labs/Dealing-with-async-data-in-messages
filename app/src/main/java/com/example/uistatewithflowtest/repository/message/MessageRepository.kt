@@ -1,5 +1,6 @@
 package com.example.uistatewithflowtest.repository.message
 
+import android.util.Log
 import com.example.uistatewithflowtest.Reaction
 import com.example.uistatewithflowtest.repository.FetchType
 import com.example.uistatewithflowtest.repository.RawMessageRepository
@@ -118,7 +119,10 @@ class MessageRepository @Inject constructor(
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
 
-        if (messagesState.pageManager.hasLatestMessage && type == FetchType.Newer) return
+        if (messagesState.pageManager.hasLatestMessage && type == FetchType.Newer) {
+            Log.d("MessageRepository", "FETCH DENIED: channelId=${key.channelId} has has latest message")
+            return
+        }
 
         messagesState.pageManager.put(
             rawMessageRepository.fetch(key.channelId, pivot, count, type)
