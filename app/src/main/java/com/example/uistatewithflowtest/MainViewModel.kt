@@ -1,5 +1,6 @@
 package com.example.uistatewithflowtest
 
+import android.util.Log
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -45,7 +46,11 @@ class MainViewModel @Inject constructor(
                 if (scrollToId != null) {
                     val index = messages.indexOfFirst { scrollToId == it.id.messageId }
 
-                    if (-1 < index) lazyListState.scrollToItem(index)
+                    if (-1 < index) {
+                        lazyListState.scrollToItem(index)
+                        Log.d("MainViewModel", "SCROLL: channelId=${key.channelId}, scroll to $scrollToId")
+
+                    }
                     scrollToId = null
                 }
             }
