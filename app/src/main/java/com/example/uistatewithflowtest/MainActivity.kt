@@ -51,7 +51,6 @@ import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.ui.theme.UiStateWithFlowTestTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -206,21 +205,19 @@ fun MessageList(
     }
 
     LaunchedEffect(lazyListState) {
-        snapshotFlow { lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .map { it ?: -1 }
+        snapshotFlow { lazyListState.canScrollForward }
             .collectLatest {
-                if (it != -1 && it == reversedMessages.lastIndex) {
-                    onFetch(reversedMessages[it].id.messageId, FetchType.Older)
+                if (it.not()) {
+                    onFetch(reversedMessages.last().id.messageId, FetchType.Older)
                 }
             }
     }
 
     LaunchedEffect(lazyListState) {
-        snapshotFlow { lazyListState.layoutInfo.visibleItemsInfo.firstOrNull()?.index }
-            .map { it ?: -1 }
+        snapshotFlow { lazyListState.canScrollBackward }
             .collectLatest {
-                if (it != -1 && it == 0) {
-                    onFetch(reversedMessages[it].id.messageId, FetchType.Newer)
+                if (it.not()) {
+                    onFetch(reversedMessages.first().id.messageId, FetchType.Newer)
                 }
             }
     }
