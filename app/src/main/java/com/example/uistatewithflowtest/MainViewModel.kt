@@ -85,8 +85,10 @@ class MainViewModel @Inject constructor(
                     count = MESSAGE_FETCH_COUNT_UNIT,
                     type = type
                 )
-                mutex.withLock {
-                    scrollToId = pivot
+                if (type == FetchType.Around) {
+                    mutex.withLock {
+                        scrollToId = pivot
+                    }
                 }
                 isFetchInProgress.set(false)
             }
