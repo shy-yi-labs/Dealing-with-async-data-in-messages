@@ -61,6 +61,7 @@ class RawMessageRepository(
         count: Int
     ): Page {
         return mutex.withLock {
+            Log.d("RawRepository", "FetchLatest: channel: $channelId, count: $count")
             val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
             Page(
                 filteredMessages.takeLast(count),
@@ -76,7 +77,7 @@ class RawMessageRepository(
         type: FetchType
     ): Page {
         return mutex.withLock {
-
+            Log.d("RawRepository", "Fetch: channel: $channelId, pivot: $pivot, count: $count, type: $type")
             val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
             val pivotIndex = filteredMessages.indexOfFirst { it.id.messageId == pivot }
 
