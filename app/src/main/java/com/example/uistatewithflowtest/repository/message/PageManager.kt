@@ -16,7 +16,7 @@ class PageManager {
     private var localLastMessageId = LastMessageIdTracker()
     private var remoteLastMessageId = LastMessageIdTracker()
 
-    val hasLatestMessage get() = localLastMessageId == remoteLastMessageId
+    val hasLatestMessage get() = localLastMessageId.isIdNull.not() && localLastMessageId == remoteLastMessageId
 
     private val rawMessageMaps: OrderedMapFlow<Message.Id, RawMessage> = OrderedMapFlow { old, new ->
         Log.d("PageManager", "OVERRIDE: $new")
