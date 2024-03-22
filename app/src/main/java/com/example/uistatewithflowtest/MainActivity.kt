@@ -205,6 +205,8 @@ fun MessageList(
         }
     }
 
+    // TODO 더 이상 스크롤 할 수 없고 사용자가 추가 스크롤을 시도할 경우로 조건 변경 필요.
+
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.canScrollForward }
             .collectLatest {
