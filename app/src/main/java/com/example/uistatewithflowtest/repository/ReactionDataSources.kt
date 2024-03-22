@@ -2,6 +2,7 @@ package com.example.uistatewithflowtest.repository
 
 import com.example.uistatewithflowtest.Reaction
 import com.example.uistatewithflowtest.ReactionEvent
+import com.example.uistatewithflowtest.outOf
 import com.example.uistatewithflowtest.repository.message.Message
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -17,7 +18,7 @@ class ReactionPullDataSource(
 
     suspend fun get(ids: List<Message.Id>): Map<Message.Id, Reaction?> {
         delay(getDelay)
-        return ids.associateWith { if ((0 until 2).random() == 0) Reaction.random() else null }
+        return ids.associateWith { if (1 outOf 2) Reaction.random() else null }
     }
 }
 

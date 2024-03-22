@@ -1,5 +1,6 @@
 package com.example.uistatewithflowtest.repository
 
+import com.example.uistatewithflowtest.outOf
 import com.example.uistatewithflowtest.repository.message.Message
 import kotlinx.coroutines.delay
 import javax.inject.Singleton
@@ -13,11 +14,12 @@ data class Scrap(val value: Message.Id) {
 
 @Singleton
 class ScrapRepository(
-    private val delayBy: Long = 1000
+    private val delayBy: Long
 ) {
 
     suspend fun get(id: Message.Id): Scrap? {
         delay(delayBy)
-        return if ((0 until 4).random() == 0) Scrap(id)  else null
+        if (1 outOf 2) delay(delayBy) // twice the delay, simulate lag
+        return if (1 outOf 3) Scrap(id)  else null
     }
 }
