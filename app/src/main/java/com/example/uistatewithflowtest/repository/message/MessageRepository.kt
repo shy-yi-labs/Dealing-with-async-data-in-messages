@@ -103,6 +103,8 @@ class MessageRepository @Inject constructor(
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
 
+        if (messagesState.pageManager.hasLatestMessage) return
+
         messagesState.pageManager.put(
             rawMessageRepository.fetchLatest(key.channelId, count)
         )
@@ -116,6 +118,8 @@ class MessageRepository @Inject constructor(
     ) {
         val messagesState = messagesStateMap[key]
             ?: throw getGetMessagesNotCalledException(key)
+
+        if (messagesState.pageManager.hasLatestMessage) return
 
         messagesState.pageManager.put(
             rawMessageRepository.fetch(key.channelId, pivot, count, type)
