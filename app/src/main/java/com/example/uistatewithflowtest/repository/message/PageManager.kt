@@ -32,7 +32,7 @@ class PageManager {
 
     suspend fun put(page: Page) {
         mutex.withLock {
-            localLastMessageId.update(page.messages.maxOf { it.id.messageId })
+            localLastMessageId.update(page.messages.maxOfOrNull { it.id.messageId })
             remoteLastMessageId.update(page.lastMessageId)
             rawMessageMaps.putAll(page.messages.map { Pair(it.id, it) })
         }
@@ -51,10 +51,6 @@ class PageManager {
             val result = when (rawMessage) {
                 is RawMessage.Deleted -> {
                     rawMessageMaps.put(rawMessage.id, rawMessage)
-                    if (hasLatestMessage)  {
-                        localLastMessageId.update(rawMessage.id.messageId)
-                        remoteLastMessageId.update(rawMessage.id.messageId)
-                    }
                     true
                 }
                 is RawMessage.Normal -> {
