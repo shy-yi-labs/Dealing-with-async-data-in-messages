@@ -71,9 +71,11 @@ class PageManager {
     }
 }
 
-data class LastMessageIdTracker(private var id: Long? = null) {
+private data class LastMessageIdTracker(private var id: Long? = null) {
 
     private val mutex = Mutex()
+
+    val isIdNull get() = id == null
 
     suspend fun update(newId: Long?) {
         if (newId == null) return
