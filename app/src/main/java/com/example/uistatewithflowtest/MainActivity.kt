@@ -68,11 +68,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    val context = LocalContext.current
+
                     Column(modifier = Modifier.fillMaxSize()) {
                         val uiState by viewModel.uiState.collectAsState()
 
                         MessageList(
                             uiState.messages,
+                            ::startMainActivity,
                             viewModel::triggerNewReactionEvent,
                             viewModel::fetch,
                             modifier = Modifier.weight(1f)
@@ -83,8 +86,6 @@ class MainActivity : ComponentActivity() {
                         )
 
                         Column {
-                            val context = LocalContext.current
-
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
@@ -102,7 +103,7 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier
                                             .clickable {
                                                 val around = uiState.messages.random().id.messageId
-                                                startActivity(getIntent(context, i, around))
+                                                startMainActivity(i, null)
                                                 Toast
                                                     .makeText(
                                                         context,
@@ -157,6 +158,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun startMainActivity(channelId: Long, messageId: Long?) {
+        startActivity(getIntent(this, channelId, messageId))
+    }
+
     companion object {
 
         fun getIntent(context: Context, channelId: Long, around: Long?): Intent {
@@ -172,6 +177,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MessageList(
     messages: List<Message>,
+    onTextClick: (Long, Long) -> Unit,
     onReactionClick: (ReactionEvent) -> Unit,
     onFetch: (Long, FetchType) -> Unit,
     modifier: Modifier
@@ -249,7 +255,20 @@ fun MessageList(
                     )
                     RowText(
                         text = item.text,
-                        modifier = Modifier.recomposeHighlighter()
+                        modifier = remember(onTextClick) {
+                            Modifier
+                                .clickable {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            "Around: ${item.id.messageId}",
+                                            Toast.LENGTH_SHORT
+                                        )
+                                        .show()
+                                    onTextClick(item.id.channelId, item.id.messageId)
+                                }
+                                .recomposeHighlighter()
+                        }
                     )
                     RowText(
                         text = reaction.toString(),
