@@ -7,19 +7,23 @@ import com.example.uistatewithflowtest.repository.RawMessage
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.math.max
 
 class PageManager {
 
     private val mutex = Mutex()
-    var lastMessageId: Long? = null
-        private set
+
+    private var localLastMessageId = LastMessageIdTracker()
+    private var remoteLastMessageId = LastMessageIdTracker()
+
+    val hasLatestMessage get() = localLastMessageId == remoteLastMessageId
 
     private val rawMessageMaps: OrderedMapFlow<Message.Id, RawMessage> = OrderedMapFlow { old, new ->
-        Log.d("MessageRepository", new.toString())
+        Log.d("PageManager", "OVERRIDE: $new")
         if (old.updateAt < new.updateAt) {
             true
         } else {
-            Log.d("MessageRepository", "Reject! $old rejected $new")
+            Log.d("PageManager", "OVERRIDE REJECTED: $old rejected $new")
             false
         }
     }
@@ -28,35 +32,63 @@ class PageManager {
 
     suspend fun put(page: Page) {
         mutex.withLock {
-            lastMessageId = page.lastMessageId
+            localLastMessageId.update(page.messages.maxOf { it.id.messageId })
+            remoteLastMessageId.update(page.lastMessageId)
             rawMessageMaps.putAll(page.messages.map { Pair(it.id, it) })
         }
     }
 
     suspend fun clear() {
         mutex.withLock {
-            lastMessageId = null
+            localLastMessageId.clear()
+            remoteLastMessageId.clear()
             rawMessageMaps.clear()
         }
     }
 
     suspend fun push(rawMessage: RawMessage): Boolean {
         return mutex.withLock {
-            when (rawMessage) {
+            val result = when (rawMessage) {
                 is RawMessage.Deleted -> {
                     rawMessageMaps.put(rawMessage.id, rawMessage)
+                    if (hasLatestMessage)  {
+                        localLastMessageId.update(rawMessage.id.messageId)
+                        remoteLastMessageId.update(rawMessage.id.messageId)
+                    }
                     true
                 }
                 is RawMessage.Normal -> {
-                    if (rawMessageMaps.map.keys.last().messageId == lastMessageId) {
-                        lastMessageId = rawMessage.id.messageId
+                    if (hasLatestMessage) {
                         rawMessageMaps.put(rawMessage.id, rawMessage)
+                        localLastMessageId.update(rawMessage.id.messageId)
+                        remoteLastMessageId.update(rawMessage.id.messageId)
                         true
                     } else {
                         false
                     }
                 }
             }
+
+            Log.d("PageManager", "PUSH: $rawMessage")
+            result
+        }
+    }
+}
+
+data class LastMessageIdTracker(private var id: Long? = null) {
+
+    private val mutex = Mutex()
+
+    suspend fun update(newId: Long?) {
+        if (newId == null) return
+        mutex.withLock {
+            id = max(id ?: 0L, newId)
+        }
+    }
+
+    suspend fun clear() {
+        mutex.withLock {
+            id = null
         }
     }
 }
