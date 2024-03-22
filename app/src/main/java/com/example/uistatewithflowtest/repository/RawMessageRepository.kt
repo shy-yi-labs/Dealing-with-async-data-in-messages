@@ -86,7 +86,7 @@ class RawMessageRepository(
             } else {
                 val (from, to) = when (type) {
                     FetchType.Older -> Pair(pivotIndex - count, pivotIndex)
-                    FetchType.Around -> Pair(pivotIndex - (count / 2), pivotIndex + (count / 2))
+                    FetchType.Around -> Pair(pivotIndex - (count / 2), pivotIndex + (count / 2) + 1)
                     FetchType.Newer -> Pair(pivotIndex + 1, pivotIndex + 1 + count)
                 }
 
