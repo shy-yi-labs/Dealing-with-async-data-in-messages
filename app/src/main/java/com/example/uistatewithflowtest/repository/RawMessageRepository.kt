@@ -1,20 +1,15 @@
 package com.example.uistatewithflowtest.repository
 
 import com.example.uistatewithflowtest.repository.message.Message
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.TreeMap
-import kotlin.coroutines.coroutineContext
 
 sealed interface RawMessage {
     val id: Message.Id
@@ -41,8 +36,8 @@ data class Page(
 )
 
 class RawMessageRepository(
-    private val pushCount: Int = 10,
-    private val pushInterval: Long = 3000
+    private val pushCount: Int,
+    private val pushInterval: Long,
 ) {
     private val mutex = Mutex()
     private val rawMessages = TreeMap<Message.Id, RawMessage>()
@@ -113,39 +108,37 @@ class RawMessageRepository(
             mutex.withLock {
                 val channelId = getRandomChannel()
 
-                val new = if ((0 until 2).random() == 0) {
-                    val idsOfLast10Messages = rawMessages.values
-                        .filter { it.id.channelId == channelId }
-                        .filterIsInstance<RawMessage.Normal>()
-                        .takeLast(2).map { it.id }
-                    val id = idsOfLast10Messages.random()
-                    RawMessage.Deleted(id)
-                } else {
-                    val newId = Message.Id(channelId = channelId, messageId = i)
-                    RawMessage.Normal(newId)
-                }
+                when ((0 until 3).random()) {
+                    0 -> { // Insert
+                        val newId = Message.Id(channelId = channelId, messageId = i)
 
-                rawMessages[new.id] = new
-                emit(new)
-            }
-        }
-    }.lag(3000).shareIn(GlobalScope, SharingStarted.Eagerly)
+                        rawMessages[newId] = RawMessage.Normal(newId).also { emit(it) }
+                    }
+                    1 -> { // Delete
+                        val idsOfLast10Messages = rawMessages.values
+                            .filter { it.id.channelId == channelId }
+                            .filterIsInstance<RawMessage.Normal>()
+                            .takeLast(10).map { it.id }
+                        val newId = idsOfLast10Messages.random()
 
-    private fun <T> Flow<T>.lag(delay: Long): Flow<T> {
-        return object : Flow<T> {
+                        rawMessages[newId] = RawMessage.Deleted(newId).also { emit(it) }
+                    }
+                    else -> { // Delete followed by Insert, simulating lag
+                        val newId = Message.Id(channelId = channelId, messageId = i)
 
-            override suspend fun collect(collector: FlowCollector<T>) {
-                val scope = CoroutineScope(coroutineContext)
-                this@lag.collect() {
-                    scope.launch {
-                        if ((0..1).random() == 0) delay(delay)
-                        collector.emit(it)
+                        val normal = RawMessage.Normal(newId)
+                        val deleted = RawMessage.Deleted(newId)
+
+                        rawMessages[newId] = normal
+                        rawMessages[newId] = deleted
+
+                        emit(deleted)
+                        emit(normal)
                     }
                 }
             }
-
         }
-    }
+    }.shareIn(GlobalScope, SharingStarted.Eagerly)
 
     private fun getRandomChannel(): Long = (0L..3L).random()
 
