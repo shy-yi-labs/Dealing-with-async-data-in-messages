@@ -1,5 +1,6 @@
 package com.example.uistatewithflowtest.repository
 
+import android.util.Log
 import com.example.uistatewithflowtest.repository.message.Message
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -60,7 +61,9 @@ class RawMessageRepository(
         count: Int
     ): Page {
         return mutex.withLock {
-            val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
+            val filteredMessages = rawMessages.values.filter {
+                it.id.channelId == channelId && it is RawMessage.Normal
+            }
             Page(
                 filteredMessages.takeLast(count),
                 filteredMessages.last().id.messageId
@@ -76,7 +79,9 @@ class RawMessageRepository(
     ): Page {
         return mutex.withLock {
 
-            val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
+            val filteredMessages = rawMessages.values.filter {
+                it.id.channelId == channelId && it is RawMessage.Normal
+            }
             val pivotIndex = filteredMessages.indexOfFirst { it.id.messageId == pivot }
 
             val messages = if (pivotIndex < 0) {
@@ -113,6 +118,7 @@ class RawMessageRepository(
                         val newId = Message.Id(channelId = channelId, messageId = i)
 
                         rawMessages[newId] = RawMessage.Normal(newId).also { emit(it) }
+                        Log.d("RawRepository", "PUSH: ${rawMessages[newId]}")
                     }
                     1 -> { // Delete
                         val idsOfLast10Messages = rawMessages.values
@@ -122,6 +128,7 @@ class RawMessageRepository(
                         val newId = idsOfLast10Messages.random()
 
                         rawMessages[newId] = RawMessage.Deleted(newId).also { emit(it) }
+                        Log.d("RawRepository", "PUSH: ${rawMessages[newId]}")
                     }
                     else -> { // Delete followed by Insert, simulating lag
                         val newId = Message.Id(channelId = channelId, messageId = i)
@@ -134,6 +141,8 @@ class RawMessageRepository(
 
                         emit(deleted)
                         emit(normal)
+                        Log.d("RawRepository", "PUSH: $deleted")
+                        Log.d("RawRepository", "PUSH: $normal")
                     }
                 }
             }
