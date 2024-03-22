@@ -114,8 +114,10 @@ class RawMessageRepository(
                     0 -> { // Insert
                         val newId = Message.Id(channelId = channelId, messageId = i)
 
-                        rawMessages[newId] = RawMessage.Normal(newId).also { emit(it) }
-                        Log.d("RawRepository", "PUSH: ${rawMessages[newId]}")
+                        rawMessages[newId] = RawMessage.Normal(newId).also {
+                            emit(it)
+                            Log.d("RawRepository", "PUSH: $it")
+                        }
                     }
                     1 -> { // Delete
                         val idsOfLast10Messages = rawMessages.values
@@ -125,8 +127,10 @@ class RawMessageRepository(
                         val targetId = idsOfLast10Messages.random()
 
                         rawMessages.remove(targetId)
-                        RawMessage.Deleted(targetId).also { emit(it) }
-                        Log.d("RawRepository", "PUSH: ${rawMessages[targetId]}")
+                        RawMessage.Deleted(targetId).also {
+                            emit(it)
+                            Log.d("RawRepository", "PUSH: $it")
+                        }
                     }
                     else -> { // Delete followed by Insert, simulating lag
                         val newId = Message.Id(channelId = channelId, messageId = i)
