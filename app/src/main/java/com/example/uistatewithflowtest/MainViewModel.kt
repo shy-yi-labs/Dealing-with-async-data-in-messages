@@ -1,24 +1,23 @@
 package com.example.uistatewithflowtest
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uistatewithflowtest.repository.FetchType
 import com.example.uistatewithflowtest.repository.ManualReactionPushDataSource
-import com.example.uistatewithflowtest.repository.message.Message
 import com.example.uistatewithflowtest.repository.message.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
-data class MainUiState(
-    val messages: List<Message> = emptyList()
-)
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -34,14 +33,28 @@ class MainViewModel @Inject constructor(
         extraKey = this.hashCode().toLong()
     )
 
-    val uiState = messageRepository
+    private val isFetchInProgress = AtomicBoolean(false)
+
+    private val mutex = Mutex()
+    private var scrollToId: Long? = null
+
+    val messages = messageRepository
         .getMessages(key)
-        .map { MainUiState(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
+        .onEach { messages ->
+            mutex.withLock {
+                if (scrollToId != null) {
+                    val index = messages.indexOfFirst { scrollToId == it.id.messageId }
+
+                    if (-1 < index) lazyListState.scrollToItem(index)
+                    scrollToId = null
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val messagesState by lazy { messageRepository.getMessagesState(key) }
 
-    private val isFetchInProgress = AtomicBoolean(false)
+    val lazyListState = LazyListState()
 
     init {
         if (around == null) {
@@ -72,6 +85,9 @@ class MainViewModel @Inject constructor(
                     count = MESSAGE_FETCH_COUNT_UNIT,
                     type = type
                 )
+                mutex.withLock {
+                    scrollToId = pivot
+                }
                 isFetchInProgress.set(false)
             }
         }

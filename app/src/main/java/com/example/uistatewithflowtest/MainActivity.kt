@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -70,10 +70,11 @@ class MainActivity : ComponentActivity() {
                     val context = LocalContext.current
 
                     Column(modifier = Modifier.fillMaxSize()) {
-                        val uiState by viewModel.uiState.collectAsState()
+                        val messages by viewModel.messages.collectAsState()
 
                         MessageList(
-                            uiState.messages,
+                            messages,
+                            viewModel.lazyListState,
                             ::startMainActivity,
                             viewModel::triggerNewReactionEvent,
                             viewModel::fetch,
@@ -101,7 +102,7 @@ class MainActivity : ComponentActivity() {
                                         text = "Channel $i",
                                         modifier = Modifier
                                             .clickable {
-                                                val around = uiState.messages.random().id.messageId
+                                                val around = messages.random().id.messageId
                                                 startMainActivity(i, null)
                                                 Toast
                                                     .makeText(
@@ -176,13 +177,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MessageList(
     messages: List<Message>,
+    lazyListState: LazyListState,
     onTextClick: (Long, Long) -> Unit,
     onReactionClick: (ReactionEvent) -> Unit,
     onFetch: (Long, FetchType) -> Unit,
     modifier: Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
 
     val reversedMessages by rememberUpdatedState(messages.reversed())
 
@@ -207,7 +208,7 @@ fun MessageList(
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.canScrollForward }
             .collectLatest {
-                if (it.not()) {
+                if (it.not() && reversedMessages.isNotEmpty()) {
                     onFetch(reversedMessages.last().id.messageId, FetchType.Older)
                 }
             }
@@ -216,7 +217,7 @@ fun MessageList(
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.canScrollBackward }
             .collectLatest {
-                if (it.not()) {
+                if (it.not() && reversedMessages.isNotEmpty()) {
                     onFetch(reversedMessages.first().id.messageId, FetchType.Newer)
                 }
             }
