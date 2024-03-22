@@ -120,6 +120,6 @@ class MainViewModel @Inject constructor(
         const val ARG_CHANNEL_ID = "argChannelId"
         const val ARG_AROUND = "argAround"
 
-        private val MESSAGE_FETCH_COUNT_UNIT = 20
+        private val MESSAGE_FETCH_COUNT_UNIT = 50
     }
 }
