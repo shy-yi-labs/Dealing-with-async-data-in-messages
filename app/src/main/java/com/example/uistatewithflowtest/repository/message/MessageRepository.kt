@@ -58,6 +58,7 @@ class MessageRepository @Inject constructor(
         override var awaitInitialization: Boolean = false
 
         var pushJob: Job? = null
+        // TODO PageManager 와 MessageRepository 간의 관계 역할 및 관계 정리.
         val pageManager = PageManager()
 
         val messages = pageManager.rawMessages
