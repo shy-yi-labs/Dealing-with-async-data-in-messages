@@ -55,8 +55,9 @@ class MessageRepository @Inject constructor(
     )
 
     private inner class MessagesStateImpl: MessagesState {
-        var pushJob: Job? = null
         override var awaitInitialization: Boolean = false
+
+        var pushJob: Job? = null
         val pageManager = PageManager()
 
         val messages = pageManager.rawMessages
@@ -74,7 +75,7 @@ class MessageRepository @Inject constructor(
         return flow {
             val messageState = messagesStateMap[key] ?: run {
                 MessagesStateImpl().also {
-                    it.init(key)
+                    it.initPush(key)
                     messagesStateMap[key] = it
                 }
             }
@@ -83,7 +84,7 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    private suspend fun MessagesStateImpl.init(key: Key) {
+    private suspend fun MessagesStateImpl.initPush(key: Key) {
         pushJob = CoroutineScope(coroutineContext).launch {
             rawMessageRepository.pushes
                 .filter { it.id.channelId == key.channelId }
