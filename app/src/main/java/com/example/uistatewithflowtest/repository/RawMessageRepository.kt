@@ -32,7 +32,7 @@ enum class FetchType {
 }
 
 data class Page(
-    val messages: List<RawMessage>,
+    val messages: List<RawMessage.Normal>,
     val lastMessageId: Long?
 )
 
@@ -41,7 +41,7 @@ class RawMessageRepository(
     private val pushInterval: Long,
 ) {
     private val mutex = Mutex()
-    private val rawMessages = TreeMap<Message.Id, RawMessage>()
+    private val rawMessages = TreeMap<Message.Id, RawMessage.Normal>()
 
     init {
         List(INITIAL_RAW_MESSAGES_COUNT) {
@@ -61,9 +61,7 @@ class RawMessageRepository(
         count: Int
     ): Page {
         return mutex.withLock {
-            val filteredMessages = rawMessages.values.filter {
-                it.id.channelId == channelId && it is RawMessage.Normal
-            }
+            val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
             Page(
                 filteredMessages.takeLast(count),
                 filteredMessages.last().id.messageId
@@ -79,9 +77,7 @@ class RawMessageRepository(
     ): Page {
         return mutex.withLock {
 
-            val filteredMessages = rawMessages.values.filter {
-                it.id.channelId == channelId && it is RawMessage.Normal
-            }
+            val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
             val pivotIndex = filteredMessages.indexOfFirst { it.id.messageId == pivot }
 
             val messages = if (pivotIndex < 0) {
@@ -123,21 +119,19 @@ class RawMessageRepository(
                     1 -> { // Delete
                         val idsOfLast10Messages = rawMessages.values
                             .filter { it.id.channelId == channelId }
-                            .filterIsInstance<RawMessage.Normal>()
                             .takeLast(10).map { it.id }
-                        val newId = idsOfLast10Messages.random()
 
-                        rawMessages[newId] = RawMessage.Deleted(newId).also { emit(it) }
-                        Log.d("RawRepository", "PUSH: ${rawMessages[newId]}")
+                        val targetId = idsOfLast10Messages.random()
+
+                        rawMessages.remove(targetId)
+                        RawMessage.Deleted(targetId).also { emit(it) }
+                        Log.d("RawRepository", "PUSH: ${rawMessages[targetId]}")
                     }
                     else -> { // Delete followed by Insert, simulating lag
                         val newId = Message.Id(channelId = channelId, messageId = i)
 
                         val normal = RawMessage.Normal(newId)
                         val deleted = RawMessage.Deleted(newId)
-
-                        rawMessages[newId] = normal
-                        rawMessages[newId] = deleted
 
                         emit(deleted)
                         emit(normal)
