@@ -22,7 +22,7 @@ data class Reaction(val value: Int) {
     }
 
     override fun toString(): String {
-        return "Reaction($value)"
+        return "😊 ($value)"
     }
 }
 

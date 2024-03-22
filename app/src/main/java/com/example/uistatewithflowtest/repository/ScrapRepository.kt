@@ -7,7 +7,7 @@ import javax.inject.Singleton
 data class Scrap(val value: Message.Id) {
 
     override fun toString(): String {
-        return "Scrap(${value.messageId})"
+        return "📄 (${value.messageId})"
     }
 }
 
