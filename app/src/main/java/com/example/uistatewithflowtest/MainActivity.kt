@@ -67,7 +67,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val context = LocalContext.current
 
                     Column(modifier = Modifier.fillMaxSize()) {
                         val messages by viewModel.messages.collectAsState()
