@@ -25,16 +25,16 @@ sealed interface RawMessage {
         override val id: Message.Id,
         override val updateAt: Long = System.currentTimeMillis(),
     ): RawMessage
+
+    data class Page(
+        val messages: List<Normal>,
+        val lastMessageId: Long?
+    )
 }
 
 enum class FetchType {
     Older, Around, Newer
 }
-
-data class Page(
-    val messages: List<RawMessage.Normal>,
-    val lastMessageId: Long?
-)
 
 class RawMessageRepository(
     private val pushCount: Int,
@@ -59,11 +59,11 @@ class RawMessageRepository(
     suspend fun fetchLatest(
         channelId: Long,
         count: Int
-    ): Page {
+    ): RawMessage.Page {
         return mutex.withLock {
             Log.d("RawRepository", "FetchLatest: channelId=$channelId, count: $count")
             val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
-            Page(
+            RawMessage.Page(
                 filteredMessages.takeLast(count),
                 filteredMessages.last().id.messageId
             )
@@ -75,7 +75,7 @@ class RawMessageRepository(
         pivot: Long,
         count: Int,
         type: FetchType
-    ): Page {
+    ): RawMessage.Page {
         return mutex.withLock {
             Log.d("RawRepository", "Fetch: channelId=$channelId, pivot: $pivot, count: $count, type: $type")
             val filteredMessages = rawMessages.values.filter { it.id.channelId == channelId }
@@ -96,7 +96,7 @@ class RawMessageRepository(
                 )
             }
 
-            Page(
+            RawMessage.Page(
                 messages,
                 filteredMessages.last().id.messageId
             )

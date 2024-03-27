@@ -2,7 +2,6 @@ package com.example.uistatewithflowtest.repository.message
 
 import android.util.Log
 import com.example.uistatewithflowtest.OrderedMapFlow
-import com.example.uistatewithflowtest.repository.Page
 import com.example.uistatewithflowtest.repository.RawMessage
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -30,7 +29,7 @@ class PageManager {
 
     val rawMessages = rawMessageMaps.map { it.values }
 
-    suspend fun put(page: Page) {
+    suspend fun put(page: RawMessage.Page) {
         mutex.withLock {
             localLastMessageId.update(page.messages.maxOfOrNull { it.id.messageId })
             remoteLastMessageId.update(page.lastMessageId)
