@@ -102,15 +102,7 @@ class MainActivity : ComponentActivity() {
                                         text = "Channel $i",
                                         modifier = Modifier
                                             .clickable {
-                                                val around = messages.random().id.messageId
                                                 startMainActivity(i, null)
-                                                Toast
-                                                    .makeText(
-                                                        context,
-                                                        "Around: $around ",
-                                                        Toast.LENGTH_SHORT
-                                                    )
-                                                    .show()
                                             }
                                     )
                                 }
